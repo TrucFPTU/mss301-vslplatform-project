@@ -1,0 +1,14 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "VSL Postgres",
+      "Group": "Servers",
+      "Host": "postgres",
+      "Port": 5432,
+      "MaintenanceDB": "postgres",
+      "Username": "vsl",
+      "SSLMode": "prefer",
+      "Comment": "Ket noi san toi postgres cua stack (host = ten container 'postgres'). Mat khau: vsl"
+    }
+  }
+}

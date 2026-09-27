@@ -143,9 +143,29 @@ services:
       config-server: { condition: service_started }
     networks: [vsl-net]
 
+  # pgAdmin: giao dien web quan ly PostgreSQL (khong can cai gi len may).
+  # Mo http://localhost:5051 — dang nhap bang PGADMIN email/password ben duoi.
+  # Server "VSL Postgres" da duoc cau hinh san (chi can nhap mat khau DB: vsl).
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: vsl-pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@vsl.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-admin}
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+    ports:
+      - "5051:80"
+    volumes:
+      - pgadmindata:/var/lib/pgadmin
+      - ./scripts/pgadmin-servers.json:/pgadmin4/servers.json:ro
+    depends_on:
+      - postgres
+    networks: [vsl-net]
+
 volumes:
   pgdata:
   miniodata:
+  pgadmindata:
 
 networks:
   vsl-net:
