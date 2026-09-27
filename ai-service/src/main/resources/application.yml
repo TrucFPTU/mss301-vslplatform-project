@@ -1,0 +1,30 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: ai-service
+  config:
+    import: "optional:configserver:${CONFIG_URI:http://localhost:8888}"
+  # Video luyện tập có thể lớn → nới giới hạn upload.
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
+
+security:
+  jwt:
+    secret: ${JWT_SECRET:dGhpcy1pcy1hLXZlcnktbG9uZy1kZXZlbG9wbWVudC1zZWNyZXQta2V5LWZvci1oczI1Ni1hbGdvcml0aG0tMTIzNDU2}
+    access-token-ttl-minutes: 30
+    refresh-token-ttl-days: 7
+
+# Đường dẫn file model ONNX (không đóng gói vào image; mount qua volume).
+ai:
+  model:
+    path: ${AI_MODEL_PATH:./models/mvitv2_small.onnx}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

@@ -1,0 +1,20 @@
+# =====================================================================
+# CẤU HÌNH DÙNG CHUNG cho MỌI service (Config Server phát qua HTTP).
+# Đặt ở đây những gì mọi service cần giống nhau: địa chỉ Eureka, JWT, v.v.
+# Cấu hình riêng từng service đặt trong file <service-name>.yml cùng thư mục.
+# =====================================================================
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_URI:http://localhost:8761/eureka/}
+  instance:
+    prefer-ip-address: true
+
+# JWT dùng chung (HS256): identity-service ký, mọi service verify bằng cùng secret.
+# ⚠️ Giá trị thật đặt qua biến môi trường JWT_SECRET, KHÔNG commit secret vào git.
+security:
+  jwt:
+    secret: ${JWT_SECRET:change-me-base64-secret-at-least-256-bit-long-for-hs256-algorithm}
+    access-token-ttl-minutes: ${JWT_ACCESS_TTL:30}
+    refresh-token-ttl-days: ${JWT_REFRESH_TTL:7}

@@ -1,0 +1,31 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: identity-service
+  config:
+    import: "optional:configserver:${CONFIG_URI:http://localhost:8888}"
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/vsl_identity}
+    username: ${DB_USERNAME:vsl}
+    password: ${DB_PASSWORD:vsl}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+
+security:
+  jwt:
+    secret: ${JWT_SECRET:dGhpcy1pcy1hLXZlcnktbG9uZy1kZXZlbG9wbWVudC1zZWNyZXQta2V5LWZvci1oczI1Ni1hbGdvcml0aG0tMTIzNDU2}
+    access-token-ttl-minutes: 30
+    refresh-token-ttl-days: 7
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info

@@ -1,0 +1,152 @@
+# =====================================================================
+# VSL Platform — dựng CẢ hệ thống bằng 1 lệnh.
+#
+# CÁCH CHẠY:
+#   1. mvn -DskipTests package         # build jar cho mọi service
+#   2. docker compose up -d --build    # dựng & chạy
+#   3. Mở http://localhost:8761        # dashboard Eureka (xem service đã đăng ký)
+#      Gọi API qua gateway: http://localhost:8080/api/template/health
+# =====================================================================
+
+services:
+  # ---------- Hạ tầng ----------
+  postgres:
+    image: postgres:17-alpine
+    container_name: vsl-postgres
+    environment:
+      POSTGRES_USER: ${DB_USERNAME:-vsl}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-vsl}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./scripts/init-multiple-databases.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-vsl}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks: [vsl-net]
+
+  minio:
+    image: minio/minio:latest
+    container_name: vsl-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_PASSWORD:-minioadmin}
+    ports:
+      - "9000:9000"   # API
+      - "9001:9001"   # Console web
+    volumes:
+      - miniodata:/data
+    networks: [vsl-net]
+
+  # ---------- Spring Cloud ----------
+  eureka-server:
+    build: ./eureka-server
+    container_name: vsl-eureka
+    ports:
+      - "8761:8761"
+    networks: [vsl-net]
+
+  config-server:
+    build: ./config-server
+    container_name: vsl-config
+    ports:
+      - "8888:8888"
+    networks: [vsl-net]
+
+  api-gateway:
+    build: ./api-gateway
+    container_name: vsl-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      EUREKA_URI: http://eureka-server:8761/eureka/
+      CONFIG_URI: http://config-server:8888
+    depends_on:
+      - eureka-server
+      - config-server
+    networks: [vsl-net]
+
+  # ---------- Service nghiệp vụ ----------
+  identity-service:
+    build: ./identity-service
+    container_name: vsl-identity
+    ports:
+      - "8081:8081"
+    environment:
+      EUREKA_URI: http://eureka-server:8761/eureka/
+      CONFIG_URI: http://config-server:8888
+      DB_URL: jdbc:postgresql://postgres:5432/vsl_identity
+      DB_USERNAME: ${DB_USERNAME:-vsl}
+      DB_PASSWORD: ${DB_PASSWORD:-vsl}
+      JWT_SECRET: ${JWT_SECRET:-dGhpcy1pcy1hLXZlcnktbG9uZy1kZXZlbG9wbWVudC1zZWNyZXQta2V5LWZvci1oczI1Ni1hbGdvcml0aG0tMTIzNDU2}
+    depends_on:
+      postgres: { condition: service_healthy }
+      eureka-server: { condition: service_started }
+      config-server: { condition: service_started }
+    networks: [vsl-net]
+
+  learning-service:
+    build: ./learning-service
+    container_name: vsl-learning
+    ports:
+      - "8082:8082"
+    environment:
+      EUREKA_URI: http://eureka-server:8761/eureka/
+      CONFIG_URI: http://config-server:8888
+      DB_URL: jdbc:postgresql://postgres:5432/vsl_learning
+      DB_USERNAME: ${DB_USERNAME:-vsl}
+      DB_PASSWORD: ${DB_PASSWORD:-vsl}
+      JWT_SECRET: ${JWT_SECRET:-dGhpcy1pcy1hLXZlcnktbG9uZy1kZXZlbG9wbWVudC1zZWNyZXQta2V5LWZvci1oczI1Ni1hbGdvcml0aG0tMTIzNDU2}
+    depends_on:
+      postgres: { condition: service_healthy }
+      eureka-server: { condition: service_started }
+      config-server: { condition: service_started }
+    networks: [vsl-net]
+
+  social-service:
+    build: ./social-service
+    container_name: vsl-social
+    ports:
+      - "8084:8084"
+    environment:
+      EUREKA_URI: http://eureka-server:8761/eureka/
+      CONFIG_URI: http://config-server:8888
+      DB_URL: jdbc:postgresql://postgres:5432/vsl_social
+      DB_USERNAME: ${DB_USERNAME:-vsl}
+      DB_PASSWORD: ${DB_PASSWORD:-vsl}
+      JWT_SECRET: ${JWT_SECRET:-dGhpcy1pcy1hLXZlcnktbG9uZy1kZXZlbG9wbWVudC1zZWNyZXQta2V5LWZvci1oczI1Ni1hbGdvcml0aG0tMTIzNDU2}
+    depends_on:
+      postgres: { condition: service_healthy }
+      eureka-server: { condition: service_started }
+      config-server: { condition: service_started }
+    networks: [vsl-net]
+
+  # ai-service: STATELESS (khong DB). Mount thu muc model tu host vao container.
+  ai-service:
+    build: ./ai-service
+    container_name: vsl-ai
+    ports:
+      - "8083:8083"
+    environment:
+      EUREKA_URI: http://eureka-server:8761/eureka/
+      CONFIG_URI: http://config-server:8888
+      AI_MODEL_PATH: /app/models/mvitv2_small.onnx
+      JWT_SECRET: ${JWT_SECRET:-dGhpcy1pcy1hLXZlcnktbG9uZy1kZXZlbG9wbWVudC1zZWNyZXQta2V5LWZvci1oczI1Ni1hbGdvcml0aG0tMTIzNDU2}
+    volumes:
+      - ./models:/app/models:ro
+    depends_on:
+      eureka-server: { condition: service_started }
+      config-server: { condition: service_started }
+    networks: [vsl-net]
+
+volumes:
+  pgdata:
+  miniodata:
+
+networks:
+  vsl-net:
+    driver: bridge

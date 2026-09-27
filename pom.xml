@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!--
+        PARENT POM (packaging = pom) cho toàn hệ thống VSL Platform (microservices).
+        Kế thừa spring-boot-starter-parent để quản lý version của Spring Boot,
+        và import Spring Cloud BOM (Oakwood 2025.1.x) để đồng bộ version Spring Cloud.
+
+        ⚠️ MA TRẬN TƯƠNG THÍCH (đóng băng, không đổi tùy tiện):
+            Java 21  ·  Spring Boot 4.0.x  ·  Spring Cloud 2025.1.x (Oakwood)
+        Spring Cloud 2025.0 trở về trước KHÔNG tương thích Spring Boot 4.
+    -->
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>4.0.7</version>
+        <relativePath/>
+    </parent>
+
+    <groupId>com.vsl</groupId>
+    <artifactId>vsl-platform-parent</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <packaging>pom</packaging>
+    <name>vsl-platform-parent</name>
+    <description>VSL Platform — parent POM quản lý version cho toàn bộ microservices</description>
+
+    <!--
+        Danh sách module. Thêm dần khi từng service được tạo.
+        Thứ tự build do Maven tự tính theo phụ thuộc (common-lib build trước).
+    -->
+    <modules>
+        <module>common-lib</module>
+        <module>eureka-server</module>
+        <module>config-server</module>
+        <module>api-gateway</module>
+        <module>identity-service</module>
+        <module>learning-service</module>
+        <module>ai-service</module>
+        <module>social-service</module>
+    </modules>
+
+    <properties>
+        <java.version>21</java.version>
+        <maven.compiler.release>21</maven.compiler.release>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <!-- Spring Cloud release train tương thích Spring Boot 4.0.x -->
+        <spring-cloud.version>2025.1.2</spring-cloud.version>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <!-- BOM Spring Cloud: đồng bộ version mọi starter spring-cloud-* -->
+            <dependency>
+                <groupId>org.springframework.cloud</groupId>
+                <artifactId>spring-cloud-dependencies</artifactId>
+                <version>${spring-cloud.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <!-- Module nội bộ: common-lib dùng chung cho mọi service -->
+            <dependency>
+                <groupId>com.vsl</groupId>
+                <artifactId>common-lib</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <build>
+        <pluginManagement>
+            <plugins>
+                <!--
+                    spring-boot-maven-plugin đã được quản lý bởi starter-parent.
+                    Loại Lombok khỏi fat-jar (chỉ dùng lúc compile).
+                -->
+                <plugin>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-maven-plugin</artifactId>
+                    <configuration>
+                        <excludes>
+                            <exclude>
+                                <groupId>org.projectlombok</groupId>
+                                <artifactId>lombok</artifactId>
+                            </exclude>
+                        </excludes>
+                    </configuration>
+                </plugin>
+                <!--
+                    JDK mới (23+) không tự chạy annotation processor tìm thấy trên classpath.
+                    Khai báo Lombok tường minh vào annotationProcessorPaths để @Getter/@Builder hoạt động.
+                    Version của Lombok do spring-boot-dependencies BOM quản lý.
+                -->
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <configuration>
+                        <annotationProcessorPaths>
+                            <path>
+                                <groupId>org.projectlombok</groupId>
+                                <artifactId>lombok</artifactId>
+                            </path>
+                        </annotationProcessorPaths>
+                    </configuration>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+    </build>
+
+</project>

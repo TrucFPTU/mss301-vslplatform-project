@@ -1,0 +1,45 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: api-gateway
+  config:
+    import: "optional:configserver:${CONFIG_URI:http://localhost:8888}"
+  cloud:
+    gateway:
+      server:
+        webmvc:            # 👈 namespace MỚI của bản WebMVC (không phải spring.cloud.gateway.mvc cũ)
+          routes:
+            # ---- Service đã tồn tại ----
+            - id: template-service
+              uri: lb://template-service       # lb:// = tìm địa chỉ qua Eureka
+              predicates:
+                - Path=/api/template/**
+
+            # ---- Các service sẽ thêm sau (route dựng sẵn theo path) ----
+            - id: identity-service
+              uri: lb://identity-service
+              predicates:
+                - Path=/api/auth/**,/api/users/**
+
+            - id: learning-service
+              uri: lb://learning-service
+              predicates:
+                - Path=/api/vocabularies/**,/api/categories/**,/api/practice/**,/api/attempts/**
+
+            - id: ai-service
+              uri: lb://ai-service
+              predicates:
+                - Path=/api/ai/**
+
+            - id: social-service
+              uri: lb://social-service
+              predicates:
+                - Path=/api/blogs/**,/api/comments/**,/api/follows/**,/api/notifications/**
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway

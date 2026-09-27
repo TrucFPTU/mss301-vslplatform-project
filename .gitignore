@@ -1,16 +1,6 @@
-# Compiled class file
+# ===== Java / Maven =====
+target/
 *.class
-
-# Log file
-*.log
-
-# BlueJ files
-*.ctxt
-
-# Mobile Tools for Java (J2ME)
-.mtj.tmp/
-
-# Package Files #
 *.jar
 *.war
 *.nar
@@ -19,6 +9,39 @@
 *.tar.gz
 *.rar
 
-# virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
+# Maven wrapper (giữ .mvn/wrapper, bỏ cache)
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
+
+# ===== Logs =====
+*.log
+logs/
 hs_err_pid*
 replay_pid*
+
+# ===== IDE =====
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.settings/
+.project
+.classpath
+nbproject/
+.DS_Store
+
+# ===== Env / Secrets =====
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+
+# ===== BlueJ / J2ME =====
+*.ctxt
+.mtj.tmp/
+
+# ===== AI model (nặng, không commit vào git) =====
+models/*.onnx
+*.onnx
