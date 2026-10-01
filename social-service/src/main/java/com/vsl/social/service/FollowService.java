@@ -28,7 +28,7 @@ public class FollowService {
     @Transactional
     public FollowResponse follow(Long followeeId, Long userId) {
         if (Objects.equals(followeeId, userId)) {
-            throw new AppException(ErrorCode.VALIDATION_ERROR, "Không thể tự theo dõi chính mình");
+            throw new AppException(ErrorCode.CANNOT_FOLLOW_SELF);
         }
         return followRepository.findByFollowerIdAndFolloweeId(userId, followeeId)
                 .map(FollowResponse::from)

@@ -49,7 +49,7 @@ public class NotificationService {
     public NotificationResponse markRead(Long notificationId, Long userId) {
         BlogNotification n = notificationRepository.findById(notificationId)
                 .filter(x -> Objects.equals(x.getRecipientId(), userId))
-                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "Không tìm thấy thông báo"));
+                .orElseThrow(() -> new AppException(ErrorCode.NOTIFICATION_NOT_FOUND));
         n.setRead(true);
         return NotificationResponse.from(n);
     }

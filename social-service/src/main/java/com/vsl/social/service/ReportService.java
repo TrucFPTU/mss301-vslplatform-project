@@ -25,10 +25,10 @@ public class ReportService {
     public void report(Long blogId, Long userId, ReportRequest req) {
         Blog blog = blogService.getVisibleBlog(blogId, userId);
         if (Objects.equals(blog.getAuthorId(), userId)) {
-            throw new AppException(ErrorCode.VALIDATION_ERROR, "Không thể báo cáo bài viết của chính mình");
+            throw new AppException(ErrorCode.REPORT_OWN_BLOG);
         }
         if (blogReportRepository.existsByBlogIdAndReporterIdAndStatus(blogId, userId, ReportStatus.PENDING)) {
-            throw new AppException(ErrorCode.VALIDATION_ERROR, "Bạn đã báo cáo bài viết này, đang chờ xử lý");
+            throw new AppException(ErrorCode.REPORT_ALREADY_PENDING);
         }
         blogReportRepository.save(BlogReport.builder()
                 .blog(blog)

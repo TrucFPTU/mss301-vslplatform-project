@@ -114,11 +114,11 @@ public class CommentService {
 
     private BlogComment getComment(Long commentId) {
         return commentRepository.findById(commentId)
-                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "Không tìm thấy bình luận"));
+                .orElseThrow(() -> new AppException(ErrorCode.COMMENT_NOT_FOUND));
     }
 
     private CommentReply getReply(Long replyId) {
         return replyRepository.findById(replyId)
-                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "Không tìm thấy trả lời"));
+                .orElseThrow(() -> new AppException(ErrorCode.REPLY_NOT_FOUND));
     }
 }

@@ -101,7 +101,7 @@ public class BlogService {
 
     public Blog getBlog(Long blogId) {
         return blogRepository.findById(blogId)
-                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "Không tìm thấy bài viết"));
+                .orElseThrow(() -> new AppException(ErrorCode.BLOG_NOT_FOUND));
     }
 
     public Blog getVisibleBlog(Long blogId, Long viewerId) {
@@ -115,7 +115,7 @@ public class BlogService {
                 || Objects.equals(blog.getAuthorId(), viewerId)
                 || AccessControl.isAdmin();
         if (!visible) {
-            throw new AppException(ErrorCode.NOT_FOUND, "Không tìm thấy bài viết");
+            throw new AppException(ErrorCode.BLOG_NOT_FOUND);
         }
     }
 
@@ -124,7 +124,7 @@ public class BlogService {
             return BlogStatus.PUBLISHED;
         }
         if (requested == BlogStatus.HIDDEN && !AccessControl.isAdmin()) {
-            throw new AppException(ErrorCode.VALIDATION_ERROR, "Chỉ ADMIN được ẩn bài viết");
+            throw new AppException(ErrorCode.BLOG_HIDE_FORBIDDEN);
         }
         return requested;
     }
