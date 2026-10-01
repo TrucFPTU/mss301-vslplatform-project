@@ -10,6 +10,11 @@ spring:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/vsl_learning}
     username: ${DB_USERNAME:vsl}
     password: ${DB_PASSWORD:vsl}
+  # Video luyện tập được upload vào đây rồi chuyển tiếp sang ai-service (giới hạn giống ai-service).
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
   jpa:
     hibernate:
       ddl-auto: update
@@ -23,6 +28,12 @@ security:
     secret: ${JWT_SECRET:dGhpcy1pcy1hLXZlcnktbG9uZy1kZXZlbG9wbWVudC1zZWNyZXQta2V5LWZvci1oczI1Ni1hbGdvcml0aG0tMTIzNDU2}
     access-token-ttl-minutes: 30
     refresh-token-ttl-days: 7
+
+# Gọi ai-service bằng TÊN Eureka (load-balanced), không dùng IP.
+ai-service:
+  base-url: http://ai-service
+  connect-timeout: 5s
+  read-timeout: 120s   # suy luận video có thể lâu
 
 eureka:
   client:

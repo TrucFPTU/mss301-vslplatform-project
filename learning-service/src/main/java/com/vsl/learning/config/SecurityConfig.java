@@ -4,6 +4,7 @@ import com.vsl.common.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -31,8 +32,10 @@ public class SecurityConfig {
                         .requestMatchers("/actuator/**",
                                 "/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**",
                                 "/dev/**").permitAll()
-                        // Ví dụ mở public cho xem nội dung (bỏ comment nếu cần):
-                        // .requestMatchers(HttpMethod.GET, "/api/vocabularies/**", "/api/categories/**").permitAll()
+                        // Xem nội dung học (từ vựng, danh mục) công khai cho khách.
+                        .requestMatchers(HttpMethod.GET, "/api/vocabularies/**", "/api/categories/**").permitAll()
+                        // Quản lý nội dung (tạo/sửa/xoá) chỉ ADMIN.
+                        .requestMatchers("/api/vocabularies/**", "/api/categories/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
                 .httpBasic(h -> h.disable())
