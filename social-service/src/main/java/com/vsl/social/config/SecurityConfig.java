@@ -4,6 +4,7 @@ import com.vsl.common.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -30,7 +31,12 @@ public class SecurityConfig {
                         .requestMatchers("/actuator/**",
                                 "/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**",
                                 "/dev/**").permitAll()
-                        // Ví dụ: .requestMatchers(HttpMethod.GET, "/api/blogs/**").permitAll()
+                        // Khách xem được bài viết, bình luận, trả lời, danh sách theo dõi.
+                        // (/api/notifications không có trong đây → luôn cần đăng nhập)
+                        .requestMatchers(HttpMethod.GET,
+                                "/api/blogs", "/api/blogs/**",
+                                "/api/comments/**",
+                                "/api/follows/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .httpBasic(h -> h.disable())

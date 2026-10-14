@@ -30,6 +30,7 @@ replay_pid*
 .classpath
 nbproject/
 .DS_Store
+.claude/
 
 # ===== Env / Secrets =====
 .env
@@ -45,3 +46,8 @@ nbproject/
 # ===== AI model (nặng, không commit vào git) =====
 models/*.onnx
 *.onnx
+
+# ===== Docs =====
+docs/
+*.md
+!README.md
