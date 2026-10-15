@@ -4,6 +4,7 @@ import com.vsl.common.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -19,6 +20,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
  */
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
 
@@ -46,6 +48,7 @@ public class SecurityConfig {
                                 // Máy phát token dev (chỉ tồn tại khi profile=dev)
                                 "/dev/**"
                         ).permitAll()
+                        .requestMatchers("/api/users/admin/**", "/api/admin/users/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
                 .httpBasic(h -> h.disable())

@@ -1,0 +1,263 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "VSL Platform - Admin & Analytics API Documentation",
+    "description": "Tài liệu kỹ thuật toàn bộ các API Quản trị Admin và Báo cáo Thống kê của hệ thống VSL Platform (Học Ngôn ngữ Ký hiệu Việt Nam). Các endpoint được định tuyến qua API Gateway cổng 8080 và yêu cầu quyền `ROLE_ADMIN`.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8080",
+      "description": "API Gateway (Local Development)"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Nhập JWT Token của tài khoản có vai trò ROLE_ADMIN"
+      }
+    },
+    "schemas": {
+      "ApiResponse": {
+        "type": "object",
+        "properties": {
+          "success": { "type": "boolean", "example": true },
+          "code": { "type": "string", "example": "SUCCESS" },
+          "message": { "type": "string", "example": "Thành công" },
+          "data": { "type": "object" },
+          "timestamp": { "type": "string", "format": "date-time" }
+        }
+      },
+      "AchievementRequest": {
+        "type": "object",
+        "required": ["key", "name", "description"],
+        "properties": {
+          "key": { "type": "string", "example": "STREAK_7", "maxLength": 50 },
+          "name": { "type": "string", "example": "Chăm Chỉ 7 Ngày", "maxLength": 100 },
+          "description": { "type": "string", "example": "Luyện tập liên tục 7 ngày", "maxLength": 255 },
+          "iconKey": { "type": "string", "example": "local_fire_department", "maxLength": 50 }
+        }
+      }
+    }
+  },
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ],
+  "paths": {
+    "/api/practice/analytics/overview": {
+      "get": {
+        "tags": ["Learning Analytics"],
+        "summary": "Tổng quan thống kê học tập",
+        "responses": {
+          "200": { "description": "Lấy tổng quan thành công" }
+        }
+      }
+    },
+    "/api/practice/analytics/trends": {
+      "get": {
+        "tags": ["Learning Analytics"],
+        "summary": "Xu hướng hoạt động theo ngày",
+        "parameters": [
+          { "name": "days", "in": "query", "schema": { "type": "integer", "default": 7 } }
+        ],
+        "responses": {
+          "200": { "description": "Lấy xu hướng thành công" }
+        }
+      }
+    },
+    "/api/practice/analytics/categories": {
+      "get": {
+        "tags": ["Learning Analytics"],
+        "summary": "Tiến độ học tập theo danh mục",
+        "responses": {
+          "200": { "description": "Lấy tiến độ danh mục thành công" }
+        }
+      }
+    },
+    "/api/practice/analytics/vocabulary-insights": {
+      "get": {
+        "tags": ["Learning Analytics"],
+        "summary": "Phân tích từ vựng khó / thành thạo",
+        "parameters": [
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 5 } }
+        ],
+        "responses": {
+          "200": { "description": "Lấy insights thành công" }
+        }
+      }
+    },
+    "/api/practice/admin/achievements": {
+      "get": {
+        "tags": ["Admin Achievements"],
+        "summary": "Danh sách toàn bộ thành tựu hệ thống",
+        "responses": {
+          "200": { "description": "Thành công" }
+        }
+      },
+      "post": {
+        "tags": ["Admin Achievements"],
+        "summary": "Tạo mới thành tựu",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": { "$ref": "#/components/schemas/AchievementRequest" }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Tạo thành công" }
+        }
+      }
+    },
+    "/api/practice/admin/achievements/{id}": {
+      "get": {
+        "tags": ["Admin Achievements"],
+        "summary": "Chi tiết thành tựu theo ID",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }],
+        "responses": { "200": { "description": "Thành công" } }
+      },
+      "put": {
+        "tags": ["Admin Achievements"],
+        "summary": "Cập nhật thành tựu",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }],
+        "requestBody": {
+          "required": true,
+          "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AchievementRequest" } } }
+        },
+        "responses": { "200": { "description": "Cập nhật thành công" } }
+      },
+      "delete": {
+        "tags": ["Admin Achievements"],
+        "summary": "Xoá thành tựu",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }],
+        "responses": { "200": { "description": "Xoá thành công" } }
+      }
+    },
+    "/api/practice/admin/achievements/{id}/grant": {
+      "post": {
+        "tags": ["Admin Achievements"],
+        "summary": "Mở khoá / trao tặng thành tựu cho học viên",
+        "parameters": [
+          { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } },
+          { "name": "userId", "in": "query", "required": true, "schema": { "type": "integer" } }
+        ],
+        "responses": { "200": { "description": "Trao tặng thành công" } }
+      }
+    },
+    "/api/blogs/admin/reports": {
+      "get": {
+        "tags": ["Admin Blog Reports"],
+        "summary": "Danh sách báo cáo vi phạm bài viết",
+        "parameters": [
+          { "name": "status", "in": "query", "schema": { "type": "string", "enum": ["PENDING", "RESOLVED", "REJECTED"] } },
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 0 } },
+          { "name": "size", "in": "query", "schema": { "type": "integer", "default": 10 } }
+        ],
+        "responses": { "200": { "description": "Thành công" } }
+      }
+    },
+    "/api/blogs/admin/reports/{id}": {
+      "get": {
+        "tags": ["Admin Blog Reports"],
+        "summary": "Chi tiết báo cáo vi phạm kèm toàn văn bài viết",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }],
+        "responses": { "200": { "description": "Thành công" } }
+      }
+    },
+    "/api/blogs/admin/reports/{id}/resolve": {
+      "put": {
+        "tags": ["Admin Blog Reports"],
+        "summary": "Phê duyệt vi phạm & Tự động ẩn bài viết",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }],
+        "responses": { "200": { "description": "Xử lý vi phạm thành công" } }
+      }
+    },
+    "/api/blogs/admin/reports/{id}/reject": {
+      "put": {
+        "tags": ["Admin Blog Reports"],
+        "summary": "Bác bỏ báo cáo vi phạm",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }],
+        "responses": { "200": { "description": "Bác bỏ báo cáo thành công" } }
+      }
+    },
+    "/api/blogs/admin/analytics/overview": {
+      "get": {
+        "tags": ["Admin Social Analytics"],
+        "summary": "Tổng quan các chỉ số mạng xã hội",
+        "responses": { "200": { "description": "Thành công" } }
+      }
+    },
+    "/api/blogs/admin/analytics/top-posts": {
+      "get": {
+        "tags": ["Admin Social Analytics"],
+        "summary": "Top bài viết có tương tác cao nhất",
+        "parameters": [{ "name": "limit", "in": "query", "schema": { "type": "integer", "default": 10 } }],
+        "responses": { "200": { "description": "Thành công" } }
+      }
+    },
+    "/api/blogs/admin/analytics/top-creators": {
+      "get": {
+        "tags": ["Admin Social Analytics"],
+        "summary": "Top người dùng tích cực sáng tạo nội dung",
+        "parameters": [{ "name": "limit", "in": "query", "schema": { "type": "integer", "default": 5 } }],
+        "responses": { "200": { "description": "Thành công" } }
+      }
+    },
+    "/api/users/admin": {
+      "get": {
+        "tags": ["Admin User Management"],
+        "summary": "Danh sách người dùng hệ thống phân trang và tìm kiếm",
+        "parameters": [
+          { "name": "keyword", "in": "query", "schema": { "type": "string" } },
+          { "name": "role", "in": "query", "schema": { "type": "string", "enum": ["ROLE_USER", "ROLE_ADMIN"] } },
+          { "name": "status", "in": "query", "schema": { "type": "string", "enum": ["ACTIVE", "BANNED", "PENDING_VERIFICATION"] } },
+          { "name": "page", "in": "query", "schema": { "type": "integer", "default": 0 } },
+          { "name": "size", "in": "query", "schema": { "type": "integer", "default": 10 } }
+        ],
+        "responses": { "200": { "description": "Thành công" } }
+      },
+      "post": {
+        "tags": ["Admin User Management"],
+        "summary": "Tạo tài khoản người dùng / quản trị viên mới",
+        "responses": { "201": { "description": "Tạo tài khoản thành công" } }
+      }
+    },
+    "/api/users/admin/statistics": {
+      "get": {
+        "tags": ["Admin User Management"],
+        "summary": "Thống kê người dùng hệ thống",
+        "responses": { "200": { "description": "Thành công" } }
+      }
+    },
+    "/api/users/admin/{id}": {
+      "get": {
+        "tags": ["Admin User Management"],
+        "summary": "Chi tiết tài khoản người dùng",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }],
+        "responses": { "200": { "description": "Thành công" } }
+      }
+    },
+    "/api/users/admin/{id}/status": {
+      "put": {
+        "tags": ["Admin User Management"],
+        "summary": "Khoá hoặc mở khoá tài khoản",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }],
+        "responses": { "200": { "description": "Thành công" } }
+      }
+    },
+    "/api/users/admin/{id}/role": {
+      "put": {
+        "tags": ["Admin User Management"],
+        "summary": "Phân quyền vai trò người dùng",
+        "parameters": [{ "name": "id", "in": "path", "required": true, "schema": { "type": "integer" } }],
+        "responses": { "200": { "description": "Thành công" } }
+      }
+    }
+  }
+}

@@ -2,6 +2,7 @@ package com.vsl.learning.repository;
 
 import com.vsl.learning.entity.LearningStatus;
 import com.vsl.learning.entity.UserProgress;
+import com.vsl.learning.repository.projection.CategoryLearnedCountProjection;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -23,4 +24,18 @@ public interface UserProgressRepository extends JpaRepository<UserProgress, Long
     List<UserProgress> findAllWithVocabularyByUserId(@Param("userId") Long userId);
 
     long countByUserIdAndLearningStatus(Long userId, LearningStatus status);
+
+    long countByLearningStatus(LearningStatus status);
+
+    /** So luot tu vung dat trang thai LEARNED theo tung categoryId. */
+    @Query("""
+            SELECT v.category.id as categoryId, COUNT(p.id) as learnedCount
+            FROM UserProgress p
+            JOIN p.vocabulary v
+            WHERE p.learningStatus = com.vsl.learning.entity.LearningStatus.LEARNED
+              AND v.category.id IS NOT NULL
+            GROUP BY v.category.id
+            """)
+    List<CategoryLearnedCountProjection> countLearnedPerCategory();
 }
+
