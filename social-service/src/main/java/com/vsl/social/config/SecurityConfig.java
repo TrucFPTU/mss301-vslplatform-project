@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -17,6 +18,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
  */
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
 
@@ -31,6 +33,8 @@ public class SecurityConfig {
                         .requestMatchers("/actuator/**",
                                 "/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**",
                                 "/dev/**").permitAll()
+                        // Tuyến quản trị báo cáo (chỉ ADMIN)
+                        .requestMatchers("/api/blogs/admin/**", "/api/admin/**").hasRole("ADMIN")
                         // Khách xem được bài viết, bình luận, trả lời, danh sách theo dõi.
                         // (/api/notifications không có trong đây → luôn cần đăng nhập)
                         .requestMatchers(HttpMethod.GET,

@@ -26,7 +26,7 @@ spring:
             - id: learning-service
               uri: lb://learning-service
               predicates:
-                - Path=/api/vocabularies/**,/api/categories/**,/api/practice/**,/api/attempts/**
+                - Path=/api/vocabularies/**,/api/categories/**,/api/practice/**,/api/attempts/**,/api/achievements/**
 
             - id: ai-service
               uri: lb://ai-service
