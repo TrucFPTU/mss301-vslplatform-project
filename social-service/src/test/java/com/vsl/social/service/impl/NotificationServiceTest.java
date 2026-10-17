@@ -1,4 +1,4 @@
-package com.vsl.social.service;
+package com.vsl.social.service.impl;
 
 import com.vsl.common.exception.ErrorCode;
 import com.vsl.social.entity.BlogNotification;
@@ -13,9 +13,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Optional;
 
-import static com.vsl.social.service.TestSupport.AUTHOR;
-import static com.vsl.social.service.TestSupport.OTHER;
-import static com.vsl.social.service.TestSupport.assertAppError;
+import static com.vsl.social.service.impl.TestSupport.AUTHOR;
+import static com.vsl.social.service.impl.TestSupport.OTHER;
+import static com.vsl.social.service.impl.TestSupport.assertAppError;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
@@ -28,7 +28,7 @@ class NotificationServiceTest {
     @Mock
     BlogNotificationRepository notificationRepository;
     @InjectMocks
-    NotificationService notificationService;
+    NotificationServiceImpl notificationService;
 
     @Test
     void notify_self_isSkipped() {

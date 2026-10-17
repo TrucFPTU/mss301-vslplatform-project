@@ -7,7 +7,8 @@ Nội dung học & tiến trình. Điều phối luồng luyện tập (gọi ai
   (KHÔNG `@ManyToOne User` — chỉ lưu `Long userId`)
 - `repository/` → Spring Data JPA cho từng entity
 - `dto/`        → `request/`, `response/`, `ai/` (hợp đồng với ai-service)
-- `service/`    → Category, Vocabulary, Attempt, Practice, Achievement (+ PracticeStreakCalculator)
+- `service/`    → interface Category, Vocabulary, Attempt, Practice, Achievement (+ PracticeStreakCalculator)
+  - `impl/`     → `*ServiceImpl` (`@Service`) + `Paging` (helper phân trang, package-private, chỉ impl dùng)
 - `client/AiServiceClient` → gọi `http://ai-service/api/ai/evaluate` qua RestClient `@LoadBalanced`
 - `config/`     → SecurityConfig, RestClientConfig
 

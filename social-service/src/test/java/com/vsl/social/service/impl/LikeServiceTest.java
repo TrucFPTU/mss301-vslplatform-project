@@ -1,4 +1,4 @@
-package com.vsl.social.service;
+package com.vsl.social.service.impl;
 
 import com.vsl.social.dto.LikeResponse;
 import com.vsl.social.entity.Blog;
@@ -7,6 +7,8 @@ import com.vsl.social.entity.BlogStatus;
 import com.vsl.social.entity.NotificationType;
 import com.vsl.social.repository.BlogLikeRepository;
 import com.vsl.social.repository.BlogRepository;
+import com.vsl.social.service.BlogService;
+import com.vsl.social.service.NotificationService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -15,9 +17,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Optional;
 
-import static com.vsl.social.service.TestSupport.AUTHOR;
-import static com.vsl.social.service.TestSupport.OTHER;
-import static com.vsl.social.service.TestSupport.blog;
+import static com.vsl.social.service.impl.TestSupport.AUTHOR;
+import static com.vsl.social.service.impl.TestSupport.OTHER;
+import static com.vsl.social.service.impl.TestSupport.blog;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -37,7 +39,7 @@ class LikeServiceTest {
     @Mock
     NotificationService notificationService;
     @InjectMocks
-    LikeService likeService;
+    LikeServiceImpl likeService;
 
     private Blog blogWithLikes(long likes) {
         Blog b = blog(1L, AUTHOR, BlogStatus.PUBLISHED);

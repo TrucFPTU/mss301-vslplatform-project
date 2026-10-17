@@ -1,4 +1,4 @@
-package com.vsl.social.service;
+package com.vsl.social.service.impl;
 
 import com.vsl.common.exception.AppException;
 import com.vsl.common.exception.ErrorCode;

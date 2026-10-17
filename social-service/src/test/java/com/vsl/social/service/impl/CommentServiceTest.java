@@ -1,4 +1,4 @@
-package com.vsl.social.service;
+package com.vsl.social.service.impl;
 
 import com.vsl.common.exception.ErrorCode;
 import com.vsl.social.dto.CommentRequest;
@@ -11,6 +11,8 @@ import com.vsl.social.entity.NotificationType;
 import com.vsl.social.repository.BlogCommentRepository;
 import com.vsl.social.repository.BlogRepository;
 import com.vsl.social.repository.CommentReplyRepository;
+import com.vsl.social.service.BlogService;
+import com.vsl.social.service.NotificationService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -20,14 +22,14 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.Optional;
 
-import static com.vsl.social.service.TestSupport.ADMIN;
-import static com.vsl.social.service.TestSupport.AUTHOR;
-import static com.vsl.social.service.TestSupport.OTHER;
-import static com.vsl.social.service.TestSupport.assertAppError;
-import static com.vsl.social.service.TestSupport.blog;
-import static com.vsl.social.service.TestSupport.comment;
-import static com.vsl.social.service.TestSupport.loginAs;
-import static com.vsl.social.service.TestSupport.logout;
+import static com.vsl.social.service.impl.TestSupport.ADMIN;
+import static com.vsl.social.service.impl.TestSupport.AUTHOR;
+import static com.vsl.social.service.impl.TestSupport.OTHER;
+import static com.vsl.social.service.impl.TestSupport.assertAppError;
+import static com.vsl.social.service.impl.TestSupport.blog;
+import static com.vsl.social.service.impl.TestSupport.comment;
+import static com.vsl.social.service.impl.TestSupport.loginAs;
+import static com.vsl.social.service.impl.TestSupport.logout;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -51,7 +53,7 @@ class CommentServiceTest {
     @Mock
     NotificationService notificationService;
     @InjectMocks
-    CommentService commentService;
+    CommentServiceImpl commentService;
 
     private final Blog blog = blog(1L, AUTHOR, BlogStatus.PUBLISHED);
 

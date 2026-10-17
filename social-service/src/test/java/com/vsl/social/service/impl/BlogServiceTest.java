@@ -1,4 +1,4 @@
-package com.vsl.social.service;
+package com.vsl.social.service.impl;
 
 import com.vsl.common.exception.ErrorCode;
 import com.vsl.social.dto.BlogDetailResponse;
@@ -21,13 +21,13 @@ import org.springframework.data.domain.Pageable;
 
 import java.util.Optional;
 
-import static com.vsl.social.service.TestSupport.ADMIN;
-import static com.vsl.social.service.TestSupport.AUTHOR;
-import static com.vsl.social.service.TestSupport.OTHER;
-import static com.vsl.social.service.TestSupport.assertAppError;
-import static com.vsl.social.service.TestSupport.blog;
-import static com.vsl.social.service.TestSupport.loginAs;
-import static com.vsl.social.service.TestSupport.logout;
+import static com.vsl.social.service.impl.TestSupport.ADMIN;
+import static com.vsl.social.service.impl.TestSupport.AUTHOR;
+import static com.vsl.social.service.impl.TestSupport.OTHER;
+import static com.vsl.social.service.impl.TestSupport.assertAppError;
+import static com.vsl.social.service.impl.TestSupport.blog;
+import static com.vsl.social.service.impl.TestSupport.loginAs;
+import static com.vsl.social.service.impl.TestSupport.logout;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
@@ -48,7 +48,7 @@ class BlogServiceTest {
     @Mock
     BlogNotificationRepository notificationRepository;
     @InjectMocks
-    BlogService blogService;
+    BlogServiceImpl blogService;
 
     @AfterEach
     void tearDown() {

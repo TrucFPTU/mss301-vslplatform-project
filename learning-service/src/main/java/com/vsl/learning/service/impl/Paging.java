@@ -1,4 +1,4 @@
-package com.vsl.learning.service;
+package com.vsl.learning.service.impl;
 
 import com.vsl.common.response.PageResponse;
 import org.springframework.data.domain.Page;
