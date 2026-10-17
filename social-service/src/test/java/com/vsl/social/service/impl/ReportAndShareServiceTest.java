@@ -1,4 +1,4 @@
-package com.vsl.social.service;
+package com.vsl.social.service.impl;
 
 import com.vsl.common.exception.ErrorCode;
 import com.vsl.social.dto.ReportRequest;
@@ -11,13 +11,17 @@ import com.vsl.social.entity.ReportStatus;
 import com.vsl.social.repository.BlogReportRepository;
 import com.vsl.social.repository.BlogRepository;
 import com.vsl.social.repository.BlogShareRepository;
+import com.vsl.social.service.BlogService;
+import com.vsl.social.service.NotificationService;
+import com.vsl.social.service.ReportService;
+import com.vsl.social.service.ShareService;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
-import static com.vsl.social.service.TestSupport.AUTHOR;
-import static com.vsl.social.service.TestSupport.OTHER;
-import static com.vsl.social.service.TestSupport.assertAppError;
-import static com.vsl.social.service.TestSupport.blog;
+import static com.vsl.social.service.impl.TestSupport.AUTHOR;
+import static com.vsl.social.service.impl.TestSupport.OTHER;
+import static com.vsl.social.service.impl.TestSupport.assertAppError;
+import static com.vsl.social.service.impl.TestSupport.blog;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -33,7 +37,7 @@ class ReportAndShareServiceTest {
     // ---- Report ----
 
     private final BlogReportRepository reportRepository = mock(BlogReportRepository.class);
-    private final ReportService reportService = new ReportService(blogService, reportRepository);
+    private final ReportService reportService = new ReportServiceImpl(blogService, reportRepository);
 
     @Test
     void report_ownBlog_rejected() {
@@ -71,7 +75,7 @@ class ReportAndShareServiceTest {
         BlogRepository blogRepository = mock(BlogRepository.class);
         BlogShareRepository shareRepository = mock(BlogShareRepository.class);
         NotificationService notificationService = mock(NotificationService.class);
-        ShareService shareService = new ShareService(blogService, blogRepository, shareRepository, notificationService);
+        ShareService shareService = new ShareServiceImpl(blogService, blogRepository, shareRepository, notificationService);
 
         Blog after = blog(1L, AUTHOR, BlogStatus.PUBLISHED);
         after.setShareCount(5);

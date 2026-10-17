@@ -1,4 +1,4 @@
-package com.vsl.social.service;
+package com.vsl.social.service.impl;
 
 import com.vsl.common.response.PageResponse;
 import org.springframework.data.domain.Page;
