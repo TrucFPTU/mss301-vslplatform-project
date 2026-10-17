@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -18,6 +19,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
  */
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity
 @RequiredArgsConstructor
 public class SecurityConfig {
 
@@ -34,7 +36,8 @@ public class SecurityConfig {
                                 "/dev/**").permitAll()
                         // Xem nội dung học (từ vựng, danh mục) công khai cho khách.
                         .requestMatchers(HttpMethod.GET, "/api/vocabularies/**", "/api/categories/**").permitAll()
-                        // Quản lý nội dung (tạo/sửa/xoá) chỉ ADMIN.
+                        // Quản lý nội dung (tạo/sửa/xoá), API Analytics & Quản trị Thành tựu chỉ ADMIN.
+                        .requestMatchers("/api/practice/analytics/**", "/api/practice/admin/**", "/api/achievements/admin/**", "/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/vocabularies/**", "/api/categories/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )

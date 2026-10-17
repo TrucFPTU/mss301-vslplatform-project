@@ -1,0 +1,508 @@
+{
+  "info": {
+    "_postman_id": "vsl-platform-admin-api-collection-v2-1",
+    "name": "VSL Platform - Admin API Collection",
+    "description": "Bộ sưu tập toàn bộ các API Quản trị Admin (Thống kê Analytics, Duyệt Báo cáo vi phạm, Quản trị Thành tựu, Thống kê Mạng xã hội) dành cho thành viên thứ 5 dự án VSL Platform.\n\nTất cả request được gửi qua API Gateway cổng 8080 và được bảo vệ bởi quyền ROLE_ADMIN.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{adminToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "adminToken",
+      "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwicm9sZSI6IlJPTEVfQURNSU4iLCJpc3MiOiJ2c2wtcGxhdGZvcm0iLCJleHAiOjE4OTM0NTYwMDB9.sample-token-replace-with-real-login",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Thống kê Học tập (Learning Analytics)",
+      "description": "Các API thống kê tiến độ luyện tập, xu hướng học tập và phân tích từ vựng dành cho Admin Dashboard.",
+      "item": [
+        {
+          "name": "GET Tổng quan Luyện tập (Overview)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/practice/analytics/overview",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "practice", "analytics", "overview"]
+            },
+            "description": "Lấy số liệu tổng thể: tổng số từ vựng, danh mục, số lượt nộp bài, số học viên, tỉ lệ chính xác chung và độ tin cậy trung bình."
+          },
+          "response": []
+        },
+        {
+          "name": "GET Xu hướng Hoạt động theo Ngày (Trends)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/practice/analytics/trends?days=7",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "practice", "analytics", "trends"],
+              "query": [
+                {
+                  "key": "days",
+                  "value": "7",
+                  "description": "Số ngày cần thống kê tính ngược từ hôm nay (mặc định 7)"
+                }
+              ]
+            },
+            "description": "Biểu đồ hoạt động theo ngày: số lượt nộp bài, số câu đúng/sai, số học viên active và tỉ lệ đúng theo từng ngày."
+          },
+          "response": []
+        },
+        {
+          "name": "GET Tiến độ theo Danh mục (Categories Progress)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/practice/analytics/categories",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "practice", "analytics", "categories"]
+            },
+            "description": "Thống kê số lượng từ vựng, số lượt làm bài và số từ đã được người học thuộc (LEARNED) theo từng danh mục."
+          },
+          "response": []
+        },
+        {
+          "name": "GET Phân tích Từ vựng Khó/Thành thạo (Vocabulary Insights)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/practice/analytics/vocabulary-insights?limit=5",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "practice", "analytics", "vocabulary-insights"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "5",
+                  "description": "Số lượng từ vựng cần lấy (mặc định 5)"
+                }
+              ]
+            },
+            "description": "Danh sách Top các từ học viên làm sai nhiều nhất (tỉ lệ chính xác thấp nhất) và Top các từ đã thành thạo nhất."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "2. Quản trị Thành tựu (Admin Achievements)",
+      "description": "CRUD danh mục thành tựu hệ thống và trao tặng thành tựu cho học viên.",
+      "item": [
+        {
+          "name": "GET Danh sách Toàn bộ Thành tựu",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/practice/admin/achievements",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "practice", "admin", "achievements"]
+            },
+            "description": "Lấy danh sách tất cả các huy hiệu/thành tựu trong hệ thống kèm số lượng học viên đã mở khoá (unlockedUserCount)."
+          },
+          "response": []
+        },
+        {
+          "name": "GET Chi tiết Thành tựu theo ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/practice/admin/achievements/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "practice", "admin", "achievements", "1"]
+            },
+            "description": "Xem chi tiết một thành tựu theo ID."
+          },
+          "response": []
+        },
+        {
+          "name": "POST Tạo mới Thành tựu",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"key\": \"STREAK_7\",\n  \"name\": \"Chăm Chỉ 7 Ngày\",\n  \"description\": \"Luyện tập liên tục trong vòng 7 ngày không ngắt quãng\",\n  \"iconKey\": \"local_fire_department\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/practice/admin/achievements",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "practice", "admin", "achievements"]
+            },
+            "description": "Admin tạo mới một danh mục thành tựu."
+          },
+          "response": []
+        },
+        {
+          "name": "PUT Cập nhật Thành tựu",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"key\": \"STREAK_7\",\n  \"name\": \"Chăm Chỉ 7 Ngày (Cập nhật)\",\n  \"description\": \"Luyện tập chuyên cần liên tục 7 ngày\",\n  \"iconKey\": \"whatshot\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/practice/admin/achievements/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "practice", "admin", "achievements", "1"]
+            },
+            "description": "Admin cập nhật thông tin tên, mô tả hoặc icon của thành tựu."
+          },
+          "response": []
+        },
+        {
+          "name": "DELETE Xoá Thành tựu",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/practice/admin/achievements/9",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "practice", "admin", "achievements", "9"]
+            },
+            "description": "Admin xoá thành tựu khỏi hệ thống và dọn dẹp các bản ghi đã mở khoá liên quan."
+          },
+          "response": []
+        },
+        {
+          "name": "POST Trao tặng Thành tựu cho Học viên",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/practice/admin/achievements/1/grant?userId=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "practice", "admin", "achievements", "1", "grant"],
+              "query": [
+                {
+                  "key": "userId",
+                  "value": "10",
+                  "description": "ID người học được mở khoá thủ công"
+                }
+              ]
+            },
+            "description": "Admin trao tặng hoặc mở khoá thủ công huy hiệu thành tựu cho một học viên (dành cho sự kiện hoặc thưởng thi đua)."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "3. Duyệt Báo cáo Vi phạm Bài viết (Admin Blog Reports)",
+      "description": "Xem danh sách tố cáo, chi tiết vi phạm, phê duyệt ẩn bài viết hoặc bác bỏ báo cáo sai.",
+      "item": [
+        {
+          "name": "GET Danh sách Báo cáo Vi phạm (Phân trang & Lọc)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/blogs/admin/reports?status=PENDING&page=0&size=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "blogs", "admin", "reports"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "PENDING",
+                  "description": "Lọc theo trạng thái: PENDING | RESOLVED | REJECTED (để trống để lấy tất cả)"
+                },
+                {
+                  "key": "page",
+                  "value": "0",
+                  "description": "Số trang (bắt đầu từ 0)"
+                },
+                {
+                  "key": "size",
+                  "value": "10",
+                  "description": "Số lượng bản ghi mỗi trang"
+                }
+              ]
+            },
+            "description": "Lấy danh sách các báo cáo vi phạm bài viết có phân trang và lọc theo trạng thái."
+          },
+          "response": []
+        },
+        {
+          "name": "GET Chi tiết Báo cáo Vi phạm kèm Toàn văn Bài viết",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/blogs/admin/reports/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "blogs", "admin", "reports", "1"]
+            },
+            "description": "Xem chi tiết một báo cáo vi phạm kèm thông tin toàn văn tiêu đề, nội dung, tác giả của bài viết bị tố cáo."
+          },
+          "response": []
+        },
+        {
+          "name": "PUT Duyệt Vi phạm & Tự động Ẩn Bài viết",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/blogs/admin/reports/1/resolve",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "blogs", "admin", "reports", "1", "resolve"]
+            },
+            "description": "Admin xác nhận bài viết vi phạm: Tự động chuyển bài viết sang HIDDEN và trạng thái báo cáo sang RESOLVED."
+          },
+          "response": []
+        },
+        {
+          "name": "PUT Bác bỏ Báo cáo Vi phạm",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/blogs/admin/reports/1/reject",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "blogs", "admin", "reports", "1", "reject"]
+            },
+            "description": "Admin bác bỏ báo cáo sai: Giữ nguyên bài viết công khai và chuyển trạng thái báo cáo sang REJECTED."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "4. Thống kê Mạng xã hội (Admin Social Analytics)",
+      "description": "Dashboard tổng quan số liệu bài viết, tương tác likes/comments/shares và báo cáo vi phạm trên mạng xã hội học tập.",
+      "item": [
+        {
+          "name": "GET Tổng quan Mạng xã hội (Overview)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/blogs/admin/analytics/overview",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "blogs", "admin", "analytics", "overview"]
+            },
+            "description": "Thống kê tổng số bài viết theo trạng thái (published, hidden, draft), tổng lượt tương tác (likes, comments, shares) và số báo cáo vi phạm."
+          },
+          "response": []
+        },
+        {
+          "name": "GET Top Bài viết Tương tác Cao nhất",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/blogs/admin/analytics/top-posts?limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "blogs", "admin", "analytics", "top-posts"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "10",
+                  "description": "Số lượng bài viết cần lấy (mặc định 10)"
+                }
+              ]
+            },
+            "description": "Danh sách các bài viết có tổng lượt tương tác (like + comment + share) cao nhất hệ thống."
+          },
+          "response": []
+        },
+        {
+          "name": "GET Top Người dùng Đóng góp Bài viết",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/blogs/admin/analytics/top-creators?limit=5",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "blogs", "admin", "analytics", "top-creators"],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "5",
+                  "description": "Số lượng người sáng tạo cần lấy (mặc định 5)"
+                }
+              ]
+            },
+            "description": "Top tác giả đăng nhiều bài viết hữu ích và nhận được nhiều lượt tương tác nhất."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "5. Quản trị Người dùng (Admin Users)",
+      "description": "Quản lý danh sách tài khoản học viên, thống kê người dùng, khoá/mở khoá tài khoản vi phạm và phân quyền quản trị.",
+      "item": [
+        {
+          "name": "GET Danh sách Người dùng (Phân trang & Lọc)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/admin?keyword=&role=&status=&page=0&size=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "users", "admin"],
+              "query": [
+                {
+                  "key": "keyword",
+                  "value": "",
+                  "description": "Tìm kiếm theo username, email hoặc họ tên"
+                },
+                {
+                  "key": "role",
+                  "value": "",
+                  "description": "Lọc theo vai trò: ROLE_USER | ROLE_ADMIN"
+                },
+                {
+                  "key": "status",
+                  "value": "",
+                  "description": "Lọc theo trạng thái: ACTIVE | BANNED | PENDING_VERIFICATION"
+                },
+                {
+                  "key": "page",
+                  "value": "0",
+                  "description": "Số trang (bắt đầu từ 0)"
+                },
+                {
+                  "key": "size",
+                  "value": "10",
+                  "description": "Số lượng bản ghi mỗi trang"
+                }
+              ]
+            },
+            "description": "Lấy danh sách người dùng phân trang kèm bộ lọc đa năng."
+          },
+          "response": []
+        },
+        {
+          "name": "GET Thống kê Người dùng Hệ thống",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/admin/statistics",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "users", "admin", "statistics"]
+            },
+            "description": "Thống kê số lượng người dùng: tổng số, số tài khoản hoạt động, bị khoá, admin và user thông thường."
+          },
+          "response": []
+        },
+        {
+          "name": "GET Chi tiết Người dùng theo ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/users/admin/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "users", "admin", "1"]
+            },
+            "description": "Xem chi tiết một tài khoản người dùng theo ID."
+          },
+          "response": []
+        },
+        {
+          "name": "POST Tạo Tài khoản Mới (Admin/User)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"hocvien01\",\n  \"email\": \"hocvien01@gmail.com\",\n  \"password\": \"hocvien123\",\n  \"fullName\": \"Học Viên VSL 01\",\n  \"role\": \"ROLE_USER\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/users/admin",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "users", "admin"]
+            },
+            "description": "Admin tạo tài khoản mới trực tiếp trong hệ thống."
+          },
+          "response": []
+        },
+        {
+          "name": "PUT Khoá hoặc Mở khoá Tài khoản (Status)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"BANNED\",\n  \"reason\": \"Vi phạm quy chuẩn bài viết cộng đồng nhiều lần\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/users/admin/1/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "users", "admin", "1", "status"]
+            },
+            "description": "Admin thay đổi trạng thái hoạt động: ACTIVE (kích hoạt) hoặc BANNED (khoá tài khoản)."
+          },
+          "response": []
+        },
+        {
+          "name": "PUT Phân quyền Vai trò Tài khoản (Role)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": \"ROLE_ADMIN\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/users/admin/1/role",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "users", "admin", "1", "role"]
+            },
+            "description": "Admin nâng cấp hoặc hạ cấp vai trò tài khoản: ROLE_USER <-> ROLE_ADMIN."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

@@ -33,6 +33,12 @@ final class AccessControl {
         }
     }
 
+    static void requireAdmin() {
+        if (!isAdmin()) {
+            throw new AppException(ErrorCode.FORBIDDEN);
+        }
+    }
+
     static void requireOwner(Long userId, Long ownerId) {
         if (!Objects.equals(ownerId, userId)) {
             throw new AppException(ErrorCode.FORBIDDEN);
