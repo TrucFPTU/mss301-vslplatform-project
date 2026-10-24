@@ -1,4 +1,4 @@
-package com.vsl.social.service;
+package com.vsl.social.service.impl;
 
 import com.vsl.common.exception.ErrorCode;
 import com.vsl.social.dto.SocialDashboardOverviewResponse;
@@ -21,11 +21,11 @@ import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 
-import static com.vsl.social.service.TestSupport.ADMIN;
-import static com.vsl.social.service.TestSupport.OTHER;
-import static com.vsl.social.service.TestSupport.assertAppError;
-import static com.vsl.social.service.TestSupport.loginAs;
-import static com.vsl.social.service.TestSupport.logout;
+import static com.vsl.social.service.impl.TestSupport.ADMIN;
+import static com.vsl.social.service.impl.TestSupport.OTHER;
+import static com.vsl.social.service.impl.TestSupport.assertAppError;
+import static com.vsl.social.service.impl.TestSupport.loginAs;
+import static com.vsl.social.service.impl.TestSupport.logout;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -41,7 +41,7 @@ class SocialAnalyticsServiceTest {
     private BlogReportRepository blogReportRepository;
 
     @InjectMocks
-    private SocialAnalyticsService socialAnalyticsService;
+    private SocialAnalyticsServiceImpl socialAnalyticsService;
 
     @AfterEach
     void tearDown() {
