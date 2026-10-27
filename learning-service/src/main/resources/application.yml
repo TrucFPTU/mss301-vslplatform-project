@@ -35,6 +35,14 @@ ai-service:
   connect-timeout: 5s
   read-timeout: 120s   # suy luận video có thể lâu
 
+# Lấy số liệu tổng hợp (public-stats, dashboard admin, streak-reminder) từ service khác qua Eureka.
+identity-service:
+  base-url: http://identity-service
+  timeout: 3s
+social-service:
+  base-url: http://social-service
+  timeout: 3s
+
 eureka:
   client:
     service-url:

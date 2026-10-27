@@ -2,6 +2,7 @@ package com.vsl.identity.controller;
 
 import com.vsl.common.response.ApiResponse;
 import com.vsl.identity.dto.ChangePasswordRequest;
+import com.vsl.identity.dto.PublicUserStatsResponse;
 import com.vsl.identity.dto.UpdateProfileRequest;
 import com.vsl.identity.dto.UserDto;
 import com.vsl.identity.service.UserService;
@@ -41,6 +42,12 @@ public class UserController {
             @Valid @RequestBody ChangePasswordRequest request) {
         userService.changePassword(userId, request);
         return ApiResponse.ok("Đổi mật khẩu thành công");
+    }
+
+    @GetMapping("/public-stats")
+    @Operation(summary = "Số liệu người dùng công khai", description = "Tổng người dùng và học viên - learning-service gọi để tổng hợp thống kê")
+    public ApiResponse<PublicUserStatsResponse> getPublicStats() {
+        return ApiResponse.ok(userService.getPublicStats());
     }
 
     @GetMapping("/{id}")

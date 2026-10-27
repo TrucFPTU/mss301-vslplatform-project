@@ -8,6 +8,7 @@ import com.vsl.social.dto.BlogResponse;
 import com.vsl.social.dto.CommentRequest;
 import com.vsl.social.dto.CommentResponse;
 import com.vsl.social.dto.LikeResponse;
+import com.vsl.social.dto.PublicBlogStatsResponse;
 import com.vsl.social.dto.ReportRequest;
 import com.vsl.social.service.BlogService;
 import com.vsl.social.service.CommentService;
@@ -51,6 +52,12 @@ public class BlogController {
                                                         @RequestParam(defaultValue = "0") int page,
                                                         @RequestParam(defaultValue = "10") int size) {
         return ApiResponse.ok(blogService.listPublished(keyword, page, size));
+    }
+
+    /** Số liệu công khai cho trang chủ / dashboard tổng hợp (learning-service gọi sang). */
+    @GetMapping("/public-stats")
+    public ApiResponse<PublicBlogStatsResponse> publicStats() {
+        return ApiResponse.ok(new PublicBlogStatsResponse(blogService.countPublished()));
     }
 
     @GetMapping("/{id}")

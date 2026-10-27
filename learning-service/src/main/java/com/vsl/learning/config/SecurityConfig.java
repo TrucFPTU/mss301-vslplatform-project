@@ -36,6 +36,9 @@ public class SecurityConfig {
                                 "/dev/**").permitAll()
                         // Xem nội dung học (từ vựng, danh mục) công khai cho khách.
                         .requestMatchers(HttpMethod.GET, "/api/vocabularies/**", "/api/categories/**").permitAll()
+                        // Số liệu trang chủ + beacon ghi lượt truy cập: khách cũng gọi được.
+                        .requestMatchers(HttpMethod.GET, "/api/public/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/visits/track").permitAll()
                         // Quản lý nội dung (tạo/sửa/xoá), API Analytics & Quản trị Thành tựu chỉ ADMIN.
                         .requestMatchers("/api/practice/analytics/**", "/api/practice/admin/**", "/api/achievements/admin/**", "/api/admin/**").hasRole("ADMIN")
                         .requestMatchers("/api/vocabularies/**", "/api/categories/**").hasRole("ADMIN")

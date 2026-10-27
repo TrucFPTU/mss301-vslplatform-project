@@ -104,6 +104,12 @@ public class BlogServiceImpl implements BlogService {
     // ---- Dùng chung cho các service khác trong social-service ----
 
     @Override
+    @Transactional(readOnly = true)
+    public long countPublished() {
+        return blogRepository.countByStatus(BlogStatus.PUBLISHED);
+    }
+
+    @Override
     public Blog getBlog(Long blogId) {
         return blogRepository.findById(blogId)
                 .orElseThrow(() -> new AppException(ErrorCode.BLOG_NOT_FOUND));

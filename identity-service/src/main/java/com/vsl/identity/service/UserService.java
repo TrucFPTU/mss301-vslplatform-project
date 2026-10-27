@@ -1,6 +1,7 @@
 package com.vsl.identity.service;
 
 import com.vsl.identity.dto.ChangePasswordRequest;
+import com.vsl.identity.dto.PublicUserStatsResponse;
 import com.vsl.identity.dto.UpdateProfileRequest;
 import com.vsl.identity.dto.UserDto;
 
@@ -13,4 +14,7 @@ public interface UserService {
     void changePassword(Long userId, ChangePasswordRequest request);
 
     UserDto getUserById(Long userId);
+
+    /** Tổng người dùng + tổng học viên (role USER). */
+    PublicUserStatsResponse getPublicStats();
 }

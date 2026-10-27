@@ -28,4 +28,7 @@ public interface BlogService {
     Blog getVisibleBlog(Long blogId, Long viewerId);
 
     void ensureVisible(Blog blog, Long viewerId);
+
+    /** Số bài đã xuất bản (PUBLISHED), không tính nháp / đã gỡ. */
+    long countPublished();
 }

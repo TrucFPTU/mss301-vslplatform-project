@@ -3,8 +3,10 @@ package com.vsl.identity.service.impl;
 import com.vsl.common.exception.AppException;
 import com.vsl.common.exception.ErrorCode;
 import com.vsl.identity.dto.ChangePasswordRequest;
+import com.vsl.identity.dto.PublicUserStatsResponse;
 import com.vsl.identity.dto.UpdateProfileRequest;
 import com.vsl.identity.dto.UserDto;
+import com.vsl.identity.entity.Role;
 import com.vsl.identity.entity.User;
 import com.vsl.identity.repository.UserRepository;
 import com.vsl.identity.service.UserService;
@@ -21,6 +23,12 @@ public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+
+    @Override
+    @Transactional(readOnly = true)
+    public PublicUserStatsResponse getPublicStats() {
+        return new PublicUserStatsResponse(userRepository.count(), userRepository.countByRole(Role.USER));
+    }
 
     @Override
     @Transactional(readOnly = true)
