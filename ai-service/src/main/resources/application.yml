@@ -23,6 +23,13 @@ ai:
   model:
     path: ${AI_MODEL_PATH:./models/mvitv2_small.onnx}
 
+# Gemini: kiểm duyệt blog/bình luận, phát hiện đăng lại, tìm từ đồng nghĩa.
+# Không có key -> bỏ qua kiểm duyệt (cho đăng) để môi trường dev vẫn chạy.
+gemini:
+  api-key: ${GEMINI_API_KEY:}
+  model: ${GEMINI_MODEL:gemini-2.5-flash}
+  enabled: ${GEMINI_ENABLED:true}
+
 eureka:
   client:
     service-url:
