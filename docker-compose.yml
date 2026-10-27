@@ -83,7 +83,14 @@ services:
       DB_USERNAME: ${DB_USERNAME:-vsl}
       DB_PASSWORD: ${DB_PASSWORD:-vsl}
       JWT_SECRET: ${JWT_SECRET:-dGhpcy1pcy1hLXZlcnktbG9uZy1kZXZlbG9wbWVudC1zZWNyZXQta2V5LWZvci1oczI1Ni1hbGdvcml0aG0tMTIzNDU2}
+      # Lưu ảnh/video: service gọi MinIO trong mạng Docker; URL trả về cho trình duyệt dùng localhost.
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_PUBLIC_ENDPOINT: ${MINIO_PUBLIC_ENDPOINT:-http://localhost:9000}
+      MINIO_USER: ${MINIO_USER:-minioadmin}
+      MINIO_PASSWORD: ${MINIO_PASSWORD:-minioadmin}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
     depends_on:
+      minio: { condition: service_started }
       postgres: { condition: service_healthy }
       eureka-server: { condition: service_started }
       config-server: { condition: service_started }
@@ -101,7 +108,13 @@ services:
       DB_USERNAME: ${DB_USERNAME:-vsl}
       DB_PASSWORD: ${DB_PASSWORD:-vsl}
       JWT_SECRET: ${JWT_SECRET:-dGhpcy1pcy1hLXZlcnktbG9uZy1kZXZlbG9wbWVudC1zZWNyZXQta2V5LWZvci1oczI1Ni1hbGdvcml0aG0tMTIzNDU2}
+      # Lưu ảnh/video: service gọi MinIO trong mạng Docker; URL trả về cho trình duyệt dùng localhost.
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_PUBLIC_ENDPOINT: ${MINIO_PUBLIC_ENDPOINT:-http://localhost:9000}
+      MINIO_USER: ${MINIO_USER:-minioadmin}
+      MINIO_PASSWORD: ${MINIO_PASSWORD:-minioadmin}
     depends_on:
+      minio: { condition: service_started }
       postgres: { condition: service_healthy }
       eureka-server: { condition: service_started }
       config-server: { condition: service_started }
@@ -119,7 +132,15 @@ services:
       DB_USERNAME: ${DB_USERNAME:-vsl}
       DB_PASSWORD: ${DB_PASSWORD:-vsl}
       JWT_SECRET: ${JWT_SECRET:-dGhpcy1pcy1hLXZlcnktbG9uZy1kZXZlbG9wbWVudC1zZWNyZXQta2V5LWZvci1oczI1Ni1hbGdvcml0aG0tMTIzNDU2}
+      # Lưu ảnh/video: service gọi MinIO trong mạng Docker; URL trả về cho trình duyệt dùng localhost.
+      MINIO_ENDPOINT: http://minio:9000
+      MINIO_PUBLIC_ENDPOINT: ${MINIO_PUBLIC_ENDPOINT:-http://localhost:9000}
+      MINIO_USER: ${MINIO_USER:-minioadmin}
+      MINIO_PASSWORD: ${MINIO_PASSWORD:-minioadmin}
+      MODERATION_FAIL_OPEN: ${MODERATION_FAIL_OPEN:-false}
+      APP_FRONTEND_URL: ${APP_FRONTEND_URL:-http://localhost:5173}
     depends_on:
+      minio: { condition: service_started }
       postgres: { condition: service_healthy }
       eureka-server: { condition: service_started }
       config-server: { condition: service_started }
@@ -135,6 +156,8 @@ services:
       EUREKA_URI: http://eureka-server:8761/eureka/
       CONFIG_URI: http://config-server:8888
       AI_MODEL_PATH: /app/models/mvitv2_small.onnx
+      # Kiểm duyệt nội dung / từ đồng nghĩa. Trống = bỏ qua kiểm duyệt (cho đăng).
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       JWT_SECRET: ${JWT_SECRET:-dGhpcy1pcy1hLXZlcnktbG9uZy1kZXZlbG9wbWVudC1zZWNyZXQta2V5LWZvci1oczI1Ni1hbGdvcml0aG0tMTIzNDU2}
     volumes:
       - ./models:/app/models:ro
