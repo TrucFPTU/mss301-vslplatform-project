@@ -40,6 +40,14 @@ public interface UserRepository extends JpaRepository<User, Long> {
             Pageable pageable
     );
 
+    /** Tìm người dùng theo họ tên / username (chỉ trạng thái cho trước, thường là ACTIVE). */
+    @Query("SELECT u FROM User u WHERE u.status = :status AND (" +
+           " LOWER(COALESCE(u.fullName, '')) LIKE LOWER(CONCAT('%', :keyword, '%')) OR " +
+           " LOWER(u.username) LIKE LOWER(CONCAT('%', :keyword, '%')))")
+    Page<User> searchByNameOrUsername(@Param("keyword") String keyword,
+                                      @Param("status") UserStatus status,
+                                      Pageable pageable);
+
     long countByStatus(UserStatus status);
 
     long countByRole(Role role);

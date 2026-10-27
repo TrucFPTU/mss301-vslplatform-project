@@ -5,6 +5,7 @@ import com.vsl.common.exception.GlobalExceptionHandler;
 import com.vsl.identity.dto.ChangePasswordRequest;
 import com.vsl.identity.dto.UpdateProfileRequest;
 import com.vsl.identity.dto.UserDto;
+import com.vsl.identity.dto.UserSummaryResponse;
 import com.vsl.identity.entity.Role;
 import com.vsl.identity.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
@@ -137,22 +138,29 @@ class UserControllerTest {
     }
 
     @Test
-    @DisplayName("API GET /api/users/{id} thành công")
-    void getUserById_Success() throws Exception {
-        UserDto userDto = UserDto.builder()
-                .userId(2L)
-                .username("anotheruser")
-                .fullName("Another User")
-                .role(Role.USER)
-                .active(true)
-                .build();
-
-        when(userService.getUserById(2L)).thenReturn(userDto);
+    @DisplayName("API GET /api/users/{id} trả hồ sơ công khai, KHÔNG lộ email/role")
+    void getPublicProfile_Success() throws Exception {
+        when(userService.getPublicProfile(2L))
+                .thenReturn(new UserSummaryResponse(2L, "anotheruser", "Another User", null));
 
         mockMvc.perform(get("/api/users/2"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.userId").value(2L))
-                .andExpect(jsonPath("$.data.username").value("anotheruser"));
+                .andExpect(jsonPath("$.data.username").value("anotheruser"))
+                .andExpect(jsonPath("$.data.email").doesNotExist())
+                .andExpect(jsonPath("$.data.role").doesNotExist());
+    }
+
+    @Test
+    @DisplayName("API GET /api/users/summaries?ids=... tra cứu hàng loạt")
+    void getSummaries_Success() throws Exception {
+        when(userService.getSummaries(java.util.List.of(1L, 2L))).thenReturn(java.util.List.of(
+                new UserSummaryResponse(1L, "a", "A", null), new UserSummaryResponse(2L, "b", "B", null)));
+
+        mockMvc.perform(get("/api/users/summaries").param("ids", "1", "2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.length()").value(2))
+                .andExpect(jsonPath("$.data[1].fullName").value("B"));
     }
 }

@@ -2,24 +2,36 @@ package com.vsl.identity.service.impl;
 
 import com.vsl.common.exception.AppException;
 import com.vsl.common.exception.ErrorCode;
+import com.vsl.common.response.PageResponse;
 import com.vsl.identity.dto.ChangePasswordRequest;
 import com.vsl.identity.dto.PublicUserStatsResponse;
 import com.vsl.identity.dto.UpdateProfileRequest;
 import com.vsl.identity.dto.UserDto;
+import com.vsl.identity.dto.UserSummaryResponse;
 import com.vsl.identity.entity.Role;
 import com.vsl.identity.entity.User;
+import com.vsl.identity.entity.UserStatus;
 import com.vsl.identity.repository.UserRepository;
 import com.vsl.identity.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.List;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
+
+    private static final int MAX_SUMMARY_IDS = 100;
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
@@ -81,9 +93,37 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional(readOnly = true)
-    public UserDto getUserById(Long userId) {
-        User user = findUserById(userId);
-        return mapToDto(user);
+    public UserSummaryResponse getPublicProfile(Long userId) {
+        return UserSummaryResponse.from(findUserById(userId));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<UserSummaryResponse> getSummaries(Collection<Long> userIds) {
+        if (userIds == null || userIds.isEmpty()) {
+            return List.of();
+        }
+        if (userIds.size() > MAX_SUMMARY_IDS) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, "Tối đa " + MAX_SUMMARY_IDS + " id mỗi lần tra cứu");
+        }
+        return userRepository.findAllById(new HashSet<>(userIds)).stream()
+                .map(UserSummaryResponse::from)
+                .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PageResponse<UserSummaryResponse> searchUsers(String keyword, int page, int size) {
+        String term = keyword == null ? "" : keyword.trim();
+        int safePage = Math.max(page, 0);
+        int safeSize = Math.min(Math.max(size, 1), 50);
+        if (term.isEmpty()) {
+            return PageResponse.of(List.of(), safePage, safeSize, 0);
+        }
+        Page<User> result = userRepository.searchByNameOrUsername(term, UserStatus.ACTIVE,
+                PageRequest.of(safePage, safeSize, Sort.by("fullName").ascending().and(Sort.by("username"))));
+        return PageResponse.of(result.getContent().stream().map(UserSummaryResponse::from).toList(),
+                result.getNumber(), result.getSize(), result.getTotalElements());
     }
 
     private User findUserById(Long userId) {

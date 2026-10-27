@@ -1,10 +1,12 @@
 package com.vsl.identity.controller;
 
 import com.vsl.common.response.ApiResponse;
+import com.vsl.common.response.PageResponse;
 import com.vsl.identity.dto.ChangePasswordRequest;
 import com.vsl.identity.dto.PublicUserStatsResponse;
 import com.vsl.identity.dto.UpdateProfileRequest;
 import com.vsl.identity.dto.UserDto;
+import com.vsl.identity.dto.UserSummaryResponse;
 import com.vsl.identity.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -12,6 +14,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/users")
@@ -59,9 +63,24 @@ public class UserController {
         return ApiResponse.ok(userService.getPublicStats());
     }
 
+    @GetMapping("/summaries")
+    @Operation(summary = "Tra cứu hàng loạt hồ sơ công khai", description = "ids=1,2,3 (tối đa 100). Social dùng để hiển thị tên + avatar")
+    public ApiResponse<List<UserSummaryResponse>> getSummaries(@RequestParam List<Long> ids) {
+        return ApiResponse.ok(userService.getSummaries(ids));
+    }
+
+    @GetMapping("/search")
+    @Operation(summary = "Tìm người dùng theo họ tên / username")
+    public ApiResponse<PageResponse<UserSummaryResponse>> searchUsers(
+            @RequestParam(required = false) String keyword,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        return ApiResponse.ok(userService.searchUsers(keyword, page, size));
+    }
+
     @GetMapping("/{id}")
-    @Operation(summary = "Lấy thông tin người dùng theo ID", description = "Dùng cho hiển thị công khai hoặc các service khác gọi sang")
-    public ApiResponse<UserDto> getUserById(@PathVariable("id") Long id) {
-        return ApiResponse.ok(userService.getUserById(id));
+    @Operation(summary = "Hồ sơ công khai theo ID", description = "Không trả email / role - chỉ tên, username, avatar")
+    public ApiResponse<UserSummaryResponse> getPublicProfile(@PathVariable("id") Long id) {
+        return ApiResponse.ok(userService.getPublicProfile(id));
     }
 }

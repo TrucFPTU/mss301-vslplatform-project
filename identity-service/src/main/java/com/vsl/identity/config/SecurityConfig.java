@@ -5,6 +5,7 @@ import com.vsl.common.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -13,6 +14,7 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.util.matcher.RegexRequestMatcher;
 
 /**
  * Bảo mật cho identity-service.
@@ -49,7 +51,10 @@ public class SecurityConfig {
                                 // Máy phát token dev (chỉ tồn tại khi profile=dev)
                                 "/dev/**"
                         ).permitAll()
-                        .requestMatchers("/api/users/admin/**", "/api/admin/users/**").hasRole("ADMIN")
+                        // Hồ sơ công khai: khách cũng xem được (KHÔNG mở /api/users/me).
+                        .requestMatchers(HttpMethod.GET, "/api/users/summaries", "/api/users/search").permitAll()
+                        .requestMatchers(RegexRequestMatcher.regexMatcher(HttpMethod.GET, "^/api/users/\\d+$")).permitAll()
+                        .requestMatchers("/api/users/admin/**").hasRole("ADMIN")
                         // API nội bộ giữa các service (token role SERVICE do service tự ký).
                         .requestMatchers("/api/users/internal/**").hasRole("SERVICE")
                         .anyRequest().authenticated()
