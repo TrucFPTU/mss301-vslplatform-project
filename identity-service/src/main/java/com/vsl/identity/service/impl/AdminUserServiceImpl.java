@@ -25,7 +25,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Slf4j
@@ -44,12 +44,12 @@ public class AdminUserServiceImpl implements AdminUserService {
             User admin = User.builder()
                     .username("admin")
                     .email("admin@vsl.com")
-                    .password(passwordEncoder.encode("admin123"))
+                    .passwordHash(passwordEncoder.encode("admin123"))
                     .fullName("Hệ Thống Quản Trị Viên")
-                    .role(Role.ROLE_ADMIN)
+                    .role(Role.ADMIN)
                     .status(UserStatus.ACTIVE)
-                    .createdAt(Instant.now())
-                    .updatedAt(Instant.now())
+                    .createdAt(LocalDateTime.now())
+                    .updatedAt(LocalDateTime.now())
                     .build();
             userRepository.save(admin);
             log.info("Default Admin account seeded: username=admin");
@@ -118,20 +118,20 @@ public class AdminUserServiceImpl implements AdminUserService {
             throw new AppException(ErrorCode.VALIDATION_ERROR, "Email đã tồn tại: " + email);
         }
 
-        Role role = request.getRole() != null ? request.getRole() : Role.ROLE_USER;
+        Role role = request.getRole() != null ? request.getRole() : Role.USER;
         User user = User.builder()
                 .username(username)
                 .email(email)
-                .password(passwordEncoder.encode(request.getPassword().trim()))
+                .passwordHash(passwordEncoder.encode(request.getPassword().trim()))
                 .fullName(request.getFullName() != null ? request.getFullName().trim() : null)
                 .role(role)
                 .status(UserStatus.ACTIVE)
-                .createdAt(Instant.now())
-                .updatedAt(Instant.now())
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
                 .build();
 
         User saved = userRepository.save(user);
-        log.info("Admin created new user: id={} username={} role={}", saved.getId(), saved.getUsername(), saved.getRole());
+        log.info("Admin created new user: id={} username={} role={}", saved.getUserId(), saved.getUsername(), saved.getRole());
         return AdminUserResponse.from(saved);
     }
 
@@ -142,8 +142,8 @@ public class AdminUserServiceImpl implements AdminUserService {
         long activeUsers = userRepository.countByStatus(UserStatus.ACTIVE);
         long bannedUsers = userRepository.countByStatus(UserStatus.BANNED);
         long pendingUsers = userRepository.countByStatus(UserStatus.PENDING_VERIFICATION);
-        long adminUsers = userRepository.countByRole(Role.ROLE_ADMIN);
-        long regularUsers = userRepository.countByRole(Role.ROLE_USER);
+        long adminUsers = userRepository.countByRole(Role.ADMIN);
+        long regularUsers = userRepository.countByRole(Role.USER);
 
         return UserStatisticsResponse.builder()
                 .totalUsers(totalUsers)

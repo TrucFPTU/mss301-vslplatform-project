@@ -5,7 +5,7 @@ import com.vsl.identity.entity.User;
 import com.vsl.identity.entity.UserStatus;
 import lombok.Builder;
 
-import java.time.Instant;
+import java.time.LocalDateTime;
 
 @Builder
 public record AdminUserResponse(
@@ -16,12 +16,12 @@ public record AdminUserResponse(
         String avatarUrl,
         Role role,
         UserStatus status,
-        Instant createdAt,
-        Instant updatedAt
+        LocalDateTime createdAt,
+        LocalDateTime updatedAt
 ) {
     public static AdminUserResponse from(User u) {
         return AdminUserResponse.builder()
-                .id(u.getId())
+                .id(u.getUserId())
                 .username(u.getUsername())
                 .email(u.getEmail())
                 .fullName(u.getFullName())

@@ -21,7 +21,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
-import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -58,20 +58,20 @@ class AdminUserControllerTest {
                 .username("nguyenvana")
                 .email("vana@gmail.com")
                 .fullName("Nguyễn Văn A")
-                .role(Role.ROLE_USER)
+                .role(Role.USER)
                 .status(UserStatus.ACTIVE)
-                .createdAt(Instant.now())
-                .updatedAt(Instant.now())
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
                 .build();
 
         PageResponse<AdminUserResponse> pageResponse = PageResponse.of(List.of(item), 0, 10, 1);
 
-        when(adminUserService.getUsers(eq("vana"), eq(Role.ROLE_USER), eq(UserStatus.ACTIVE), eq(0), eq(10)))
+        when(adminUserService.getUsers(eq("vana"), eq(Role.USER), eq(UserStatus.ACTIVE), eq(0), eq(10)))
                 .thenReturn(pageResponse);
 
         mockMvc.perform(get("/api/users/admin")
                         .param("keyword", "vana")
-                        .param("role", "ROLE_USER")
+                        .param("role", "USER")
                         .param("status", "ACTIVE")
                         .param("page", "0")
                         .param("size", "10")
@@ -82,7 +82,7 @@ class AdminUserControllerTest {
                 .andExpect(jsonPath("$.data.content[0].username").value("nguyenvana"))
                 .andExpect(jsonPath("$.data.totalElements").value(1L));
 
-        verify(adminUserService).getUsers(eq("vana"), eq(Role.ROLE_USER), eq(UserStatus.ACTIVE), eq(0), eq(10));
+        verify(adminUserService).getUsers(eq("vana"), eq(Role.USER), eq(UserStatus.ACTIVE), eq(0), eq(10));
     }
 
     @Test
@@ -118,7 +118,7 @@ class AdminUserControllerTest {
                 .username("nguyenvana")
                 .email("vana@gmail.com")
                 .fullName("Nguyễn Văn A")
-                .role(Role.ROLE_USER)
+                .role(Role.USER)
                 .status(UserStatus.ACTIVE)
                 .build();
 
@@ -142,14 +142,14 @@ class AdminUserControllerTest {
                 .email("newadmin@vsl.com")
                 .password("password123")
                 .fullName("Admin Mới")
-                .role(Role.ROLE_ADMIN)
+                .role(Role.ADMIN)
                 .build();
 
         AdminUserResponse created = AdminUserResponse.builder()
                 .id(10L)
                 .username("newadmin")
                 .email("newadmin@vsl.com")
-                .role(Role.ROLE_ADMIN)
+                .role(Role.ADMIN)
                 .status(UserStatus.ACTIVE)
                 .build();
 
@@ -197,13 +197,13 @@ class AdminUserControllerTest {
     @DisplayName("PUT /api/users/admin/{id}/role -> 200 OK và cập nhật vai trò")
     void updateUserRole_Returns200() throws Exception {
         UserRoleUpdateRequest req = UserRoleUpdateRequest.builder()
-                .role(Role.ROLE_ADMIN)
+                .role(Role.ADMIN)
                 .build();
 
         AdminUserResponse updated = AdminUserResponse.builder()
                 .id(1L)
                 .username("nguyenvana")
-                .role(Role.ROLE_ADMIN)
+                .role(Role.ADMIN)
                 .build();
 
         when(adminUserService.updateUserRole(eq(1L), any(UserRoleUpdateRequest.class))).thenReturn(updated);
@@ -213,7 +213,7 @@ class AdminUserControllerTest {
                         .content(objectMapper.writeValueAsString(req)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("SUCCESS"))
-                .andExpect(jsonPath("$.data.role").value("ROLE_ADMIN"))
+                .andExpect(jsonPath("$.data.role").value("ADMIN"))
                 .andExpect(jsonPath("$.message").value("Cập nhật quyền người dùng thành công"));
 
         verify(adminUserService).updateUserRole(eq(1L), any(UserRoleUpdateRequest.class));

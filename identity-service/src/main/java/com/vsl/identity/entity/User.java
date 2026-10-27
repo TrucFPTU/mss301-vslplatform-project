@@ -3,25 +3,21 @@ package com.vsl.identity.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.time.Instant;
+import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "users", indexes = {
-        @Index(name = "idx_users_username", columnList = "username", unique = true),
-        @Index(name = "idx_users_email", columnList = "email", unique = true),
-        @Index(name = "idx_users_role", columnList = "role"),
-        @Index(name = "idx_users_status", columnList = "status")
-})
+@Table(name = "users")
 @Getter
 @Setter
-@Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class User {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @Column(name = "user_id")
+    private Long userId;
 
     @Column(nullable = false, unique = true, length = 50)
     private String username;
@@ -29,43 +25,57 @@ public class User {
     @Column(nullable = false, unique = true, length = 100)
     private String email;
 
-    @Column(nullable = false, length = 255)
-    private String password;
+    @Column(name = "password_hash", nullable = false, length = 255)
+    private String passwordHash;
 
-    @Column(name = "full_name", length = 100)
+    @Column(name = "full_name", nullable = false, length = 100)
     private String fullName;
 
-    @Column(name = "avatar_url", length = 500)
+    @Column(name = "avatar_url", length = 1024)
     private String avatarUrl;
+
+    @Column(name = "bio", length = 500)
+    private String bio;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
-    private Role role;
+    @Builder.Default
+    private Role role = Role.USER;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
-    private UserStatus status;
+    @Builder.Default
+    private UserStatus status = UserStatus.ACTIVE;
 
     @Column(name = "created_at", nullable = false, updatable = false)
-    private Instant createdAt;
+    private LocalDateTime createdAt;
 
-    @Column(name = "updated_at", nullable = false)
-    private Instant updatedAt;
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+
+    /** Tài khoản còn hoạt động = trạng thái ACTIVE. Nguồn sự thật là {@link #status}. */
+    public boolean isActive() {
+        return status == UserStatus.ACTIVE;
+    }
 
     @PrePersist
-    protected void onCreate() {
-        this.createdAt = Instant.now();
-        this.updatedAt = Instant.now();
-        if (this.status == null) {
-            this.status = UserStatus.ACTIVE;
+    public void prePersist() {
+        if (status == null) {
+            status = UserStatus.ACTIVE;
         }
-        if (this.role == null) {
-            this.role = Role.ROLE_USER;
+        if (role == null) {
+            role = Role.USER;
+        }
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now();
+        }
+        if (updatedAt == null) {
+            updatedAt = LocalDateTime.now();
         }
     }
 
     @PreUpdate
-    protected void onUpdate() {
-        this.updatedAt = Instant.now();
+    public void preUpdate() {
+        updatedAt = LocalDateTime.now();
     }
 }

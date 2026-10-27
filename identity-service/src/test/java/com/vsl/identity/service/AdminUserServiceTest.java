@@ -24,7 +24,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
-import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -51,25 +51,25 @@ class AdminUserServiceTest {
     @BeforeEach
     void setUp() {
         sampleUser = User.builder()
-                .id(1L)
+                .userId(1L)
                 .username("nguyenvana")
                 .email("vana@gmail.com")
-                .password("encoded_pass")
+                .passwordHash("encoded_pass")
                 .fullName("Nguyễn Văn A")
-                .role(Role.ROLE_USER)
+                .role(Role.USER)
                 .status(UserStatus.ACTIVE)
-                .createdAt(Instant.now())
-                .updatedAt(Instant.now())
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
                 .build();
     }
 
     @Test
     @DisplayName("getUsers -> trả về danh sách phân trang thành công")
     void getUsers_Success() {
-        when(userRepository.searchUsers(eq("vana"), eq(Role.ROLE_USER), eq(UserStatus.ACTIVE), any(Pageable.class)))
+        when(userRepository.searchUsers(eq("vana"), eq(Role.USER), eq(UserStatus.ACTIVE), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(sampleUser)));
 
-        PageResponse<AdminUserResponse> result = adminUserService.getUsers("vana", Role.ROLE_USER, UserStatus.ACTIVE, 0, 10);
+        PageResponse<AdminUserResponse> result = adminUserService.getUsers("vana", Role.USER, UserStatus.ACTIVE, 0, 10);
 
         assertThat(result.getContent()).hasSize(1);
         AdminUserResponse item = result.getContent().get(0);
@@ -120,7 +120,7 @@ class AdminUserServiceTest {
     @DisplayName("updateUserRole -> nâng quyền tài khoản thành ROLE_ADMIN thành công")
     void updateUserRole_Success() {
         UserRoleUpdateRequest req = UserRoleUpdateRequest.builder()
-                .role(Role.ROLE_ADMIN)
+                .role(Role.ADMIN)
                 .build();
 
         when(userRepository.findById(1L)).thenReturn(Optional.of(sampleUser));
@@ -128,7 +128,7 @@ class AdminUserServiceTest {
 
         AdminUserResponse result = adminUserService.updateUserRole(1L, req);
 
-        assertThat(result.role()).isEqualTo(Role.ROLE_ADMIN);
+        assertThat(result.role()).isEqualTo(Role.ADMIN);
         verify(userRepository).save(sampleUser);
     }
 
@@ -140,7 +140,7 @@ class AdminUserServiceTest {
                 .email("admin@test.com")
                 .password("secret123")
                 .fullName("Quản trị mới")
-                .role(Role.ROLE_ADMIN)
+                .role(Role.ADMIN)
                 .build();
 
         when(userRepository.existsByUsername("newadmin")).thenReturn(false);
@@ -148,7 +148,7 @@ class AdminUserServiceTest {
         when(passwordEncoder.encode("secret123")).thenReturn("hashed_secret");
         when(userRepository.save(any(User.class))).thenAnswer(inv -> {
             User u = inv.getArgument(0);
-            u.setId(2L);
+            u.setUserId(2L);
             return u;
         });
 
@@ -156,7 +156,7 @@ class AdminUserServiceTest {
 
         assertThat(result.id()).isEqualTo(2L);
         assertThat(result.username()).isEqualTo("newadmin");
-        assertThat(result.role()).isEqualTo(Role.ROLE_ADMIN);
+        assertThat(result.role()).isEqualTo(Role.ADMIN);
         assertThat(result.status()).isEqualTo(UserStatus.ACTIVE);
     }
 
@@ -200,8 +200,8 @@ class AdminUserServiceTest {
         when(userRepository.countByStatus(UserStatus.ACTIVE)).thenReturn(45L);
         when(userRepository.countByStatus(UserStatus.BANNED)).thenReturn(3L);
         when(userRepository.countByStatus(UserStatus.PENDING_VERIFICATION)).thenReturn(2L);
-        when(userRepository.countByRole(Role.ROLE_ADMIN)).thenReturn(5L);
-        when(userRepository.countByRole(Role.ROLE_USER)).thenReturn(45L);
+        when(userRepository.countByRole(Role.ADMIN)).thenReturn(5L);
+        when(userRepository.countByRole(Role.USER)).thenReturn(45L);
 
         UserStatisticsResponse stats = adminUserService.getUserStatistics();
 
