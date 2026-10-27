@@ -19,6 +19,13 @@ public interface VocabularyRepository extends JpaRepository<Vocabulary, Long> {
 
     boolean existsByExpectedId(Integer expectedId);
 
+    /**
+     * Số từ LUYỆN ĐƯỢC (đã gán class AI + có video mẫu). Dùng làm mẫu số cho độ thành thạo / "học hết":
+     * chia cho tổng số từ (kể cả từ chưa luyện được) thì người học không bao giờ đạt 100%.
+     */
+    @Query("SELECT COUNT(v) FROM Vocabulary v WHERE v.expectedId IS NOT NULL AND v.videoTutorialUrl IS NOT NULL")
+    long countPracticable();
+
     boolean existsByExpectedIdAndIdNot(Integer expectedId, Long id);
 
     @EntityGraph(attributePaths = {"category"})

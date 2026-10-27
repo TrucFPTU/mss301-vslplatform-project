@@ -92,7 +92,7 @@ public class AchievementServiceImpl implements AchievementService {
         long totalAttempts = attemptHistoryRepository.countByUserId(userId);
         long correctAttempts = attemptHistoryRepository.countByUserIdAndIsCorrect(userId, true);
         long learnedCount = userProgressRepository.countByUserIdAndLearningStatus(userId, LearningStatus.LEARNED);
-        long totalVocabs = vocabularyRepository.count();
+        long totalVocabs = vocabularyRepository.countPracticable();
         int proficiency = AchievementService.computeProficiency(learnedCount, totalVocabs);
 
         Map<String, Boolean> conditions = new LinkedHashMap<>();

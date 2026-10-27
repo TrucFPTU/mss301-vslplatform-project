@@ -83,7 +83,7 @@ public class PracticeServiceImpl implements PracticeService {
         long totalAttempts = attemptHistoryRepository.countByUserId(userId);
         long correctAttempts = attemptHistoryRepository.countByUserIdAndIsCorrect(userId, true);
         long learnedCount = userProgressRepository.countByUserIdAndLearningStatus(userId, LearningStatus.LEARNED);
-        long totalVocabs = vocabularyRepository.count();
+        long totalVocabs = vocabularyRepository.countPracticable();
 
         double accuracyRate = totalAttempts > 0
                 ? Math.round((double) correctAttempts / totalAttempts * 10000.0) / 100.0
