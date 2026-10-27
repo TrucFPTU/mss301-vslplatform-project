@@ -7,7 +7,8 @@ Nội dung học & tiến trình. Điều phối luồng luyện tập (gọi ai
   (KHÔNG `@ManyToOne User` — chỉ lưu `Long userId`)
 - `repository/` → Spring Data JPA cho từng entity
 - `dto/`        → `request/`, `response/`, `ai/` (hợp đồng với ai-service)
-- `service/`    → Category, Vocabulary, Attempt, Practice, Achievement (+ PracticeStreakCalculator)
+- `service/`    → interface Category, Vocabulary, Attempt, Practice, Achievement (+ PracticeStreakCalculator)
+  - `impl/`     → `*ServiceImpl` (`@Service`) + `Paging` (helper phân trang, package-private, chỉ impl dùng)
 - `client/AiServiceClient` → gọi `http://ai-service/api/ai/evaluate` qua RestClient `@LoadBalanced`
 - `config/`     → SecurityConfig, RestClientConfig
 
@@ -21,6 +22,16 @@ Nội dung học & tiến trình. Điều phối luồng luyện tập (gọi ai
 | POST | `/api/practice/evaluate` (multipart: `video`, `expectedId`, `startFrac`, `endFrac`) | Đăng nhập |
 | GET | `/api/practice/progress`, `/api/practice/stats`, `/api/practice/achievements` | Đăng nhập |
 | GET | `/api/attempts`, `/api/attempts/recent?limit=` | Đăng nhập |
+| GET | `/api/practice/analytics/overview` | ADMIN |
+| GET | `/api/practice/analytics/trends?days=7` | ADMIN |
+| GET | `/api/practice/analytics/vocabulary-insights?limit=5` | ADMIN |
+| GET | `/api/practice/analytics/categories` | ADMIN |
+| GET | `/api/practice/admin/achievements` (hoặc `/api/achievements/admin`) | ADMIN |
+| GET | `/api/practice/admin/achievements/{id}` | ADMIN |
+| POST | `/api/practice/admin/achievements` | ADMIN |
+| PUT | `/api/practice/admin/achievements/{id}` | ADMIN |
+| DELETE | `/api/practice/admin/achievements/{id}` | ADMIN |
+| POST | `/api/practice/admin/achievements/{id}/grant?userId=` | ADMIN |
 
 ## Luồng luyện tập
 nhận video → kiểm tra video + tìm từ vựng theo `expectedId` → gọi ai-service

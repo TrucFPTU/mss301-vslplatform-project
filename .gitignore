@@ -51,3 +51,5 @@ models/*.onnx
 docs/
 *.md
 !README.md
+!ADMIN_API_DOCUMENTATION.md
+
