@@ -15,6 +15,9 @@ public interface UserService {
 
     UserDto getUserById(Long userId);
 
+    /** Bật/tắt email nhắc nhở streak của chính người dùng. */
+    UserDto updateNotificationSettings(Long userId, boolean emailNotificationsEnabled);
+
     /** Tổng người dùng + tổng học viên (role USER). */
     PublicUserStatsResponse getPublicStats();
 }

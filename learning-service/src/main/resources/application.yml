@@ -43,6 +43,12 @@ social-service:
   base-url: http://social-service
   timeout: 3s
 
+# Nhắc nhở streak qua email (mail do identity-service gửi). Demo nhanh: cron "0 * * * * *" (mỗi phút).
+streak-reminder:
+  enabled: ${STREAK_REMINDER_ENABLED:true}
+  cron: ${STREAK_REMINDER_CRON:0 0 19 * * *}
+  zone: Asia/Ho_Chi_Minh
+
 eureka:
   client:
     service-url:

@@ -44,6 +44,15 @@ public class UserController {
         return ApiResponse.ok("Đổi mật khẩu thành công");
     }
 
+    @PatchMapping("/me/notifications")
+    @Operation(summary = "Bật/tắt email nhắc nhở streak", description = "Mặc định tắt; bật để nhận mail nhắc khi sắp mất chuỗi ngày học")
+    public ApiResponse<UserDto> updateNotificationSettings(
+            @AuthenticationPrincipal Long userId,
+            @RequestParam boolean emailNotificationsEnabled) {
+        return ApiResponse.ok(userService.updateNotificationSettings(userId, emailNotificationsEnabled),
+                "Đã cập nhật cài đặt thông báo");
+    }
+
     @GetMapping("/public-stats")
     @Operation(summary = "Số liệu người dùng công khai", description = "Tổng người dùng và học viên - learning-service gọi để tổng hợp thống kê")
     public ApiResponse<PublicUserStatsResponse> getPublicStats() {

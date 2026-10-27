@@ -40,6 +40,10 @@ public interface AttemptHistoryRepository extends JpaRepository<AttemptHistory, 
     @Query("SELECT COALESCE(AVG(h.confidence), 0.0) FROM AttemptHistory h WHERE h.confidence IS NOT NULL")
     Double getAverageConfidence();
 
+    /** Những user có ít nhất 1 lần luyện tập trong [from, to) - dùng chọn ứng viên nhắc streak. */
+    @Query("SELECT DISTINCT h.userId FROM AttemptHistory h WHERE h.attemptedAt >= :from AND h.attemptedAt < :to")
+    List<Long> findUserIdsPracticedBetween(@Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
+
     /** Thoi diem cac lan luyen tap cua user - dung de tinh chuoi ngay hoc (streak). */
     @Query("SELECT h.attemptedAt FROM AttemptHistory h WHERE h.userId = :userId AND h.attemptedAt IS NOT NULL")
     List<LocalDateTime> findAttemptTimesByUserId(@Param("userId") Long userId);

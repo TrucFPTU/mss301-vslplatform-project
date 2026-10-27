@@ -22,6 +22,8 @@ public class UserDto {
     private String bio;
     private Role role;
     private boolean active;
+    /** Đã bật email nhắc nhở streak chưa (mặc định tắt). */
+    private boolean emailNotificationsEnabled;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

@@ -25,6 +25,14 @@ public class UserServiceImpl implements UserService {
     private final PasswordEncoder passwordEncoder;
 
     @Override
+    @Transactional
+    public UserDto updateNotificationSettings(Long userId, boolean emailNotificationsEnabled) {
+        User user = findUserById(userId);
+        user.setEmailNotificationsEnabled(emailNotificationsEnabled);
+        return mapToDto(userRepository.save(user));
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public PublicUserStatsResponse getPublicStats() {
         return new PublicUserStatsResponse(userRepository.count(), userRepository.countByRole(Role.USER));
@@ -93,6 +101,7 @@ public class UserServiceImpl implements UserService {
                 .bio(user.getBio())
                 .role(user.getRole())
                 .active(user.isActive())
+                .emailNotificationsEnabled(user.isEmailNotificationsEnabled())
                 .createdAt(user.getCreatedAt())
                 .updatedAt(user.getUpdatedAt())
                 .build();

@@ -48,6 +48,8 @@ public class SecurityConfig {
                                 "/dev/**"
                         ).permitAll()
                         .requestMatchers("/api/users/admin/**", "/api/admin/users/**").hasRole("ADMIN")
+                        // API nội bộ giữa các service (token role SERVICE do service tự ký).
+                        .requestMatchers("/api/users/internal/**").hasRole("SERVICE")
                         .anyRequest().authenticated()
                 )
                 .httpBasic(h -> h.disable())
