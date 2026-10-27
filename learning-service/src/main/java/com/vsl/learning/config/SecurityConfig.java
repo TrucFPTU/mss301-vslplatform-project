@@ -37,6 +37,8 @@ public class SecurityConfig {
                                 "/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**",
                                 "/dev/**").permitAll()
                         // Xem nội dung học (từ vựng, danh mục) công khai cho khách.
+                        // Từ đồng nghĩa gọi Gemini (tốn quota) -> chỉ người đăng nhập, đặt TRƯỚC rule GET công khai.
+                        .requestMatchers(HttpMethod.GET, "/api/vocabularies/ai-synonyms").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/vocabularies/**", "/api/categories/**").permitAll()
                         // Số liệu trang chủ + beacon ghi lượt truy cập: khách cũng gọi được.
                         .requestMatchers(HttpMethod.GET, "/api/public/**").permitAll()

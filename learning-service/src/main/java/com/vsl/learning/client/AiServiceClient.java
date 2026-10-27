@@ -23,6 +23,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.net.http.HttpClient;
 import java.time.Duration;
 import java.util.Collection;
+import java.util.List;
 
 /**
  * Client gọi ai-service để chấm điểm video luyện tập: POST http://ai-service/api/ai/evaluate (multipart).
@@ -34,6 +35,8 @@ public class AiServiceClient {
 
     private static final String EVALUATE_PATH = "/api/ai/evaluate";
     private static final ParameterizedTypeReference<AiServiceResponse<EvaluationResponse>> EVALUATION_TYPE =
+            new ParameterizedTypeReference<>() {};
+    private static final ParameterizedTypeReference<AiServiceResponse<SynonymResult>> SYNONYM_TYPE =
             new ParameterizedTypeReference<>() {};
 
     private final RestClient restClient;
@@ -101,6 +104,62 @@ public class AiServiceClient {
             throw new AppException(ErrorCode.AI_INFERENCE_ERROR, "ai-service trả về kết quả không hợp lệ");
         }
         return response.getData();
+    }
+
+    /**
+     * Chuyển mã video hướng dẫn sang MP4 H.264/AAC (ai-service có FFmpeg). Gọi bằng JWT admin đang upload.
+     * @return nội dung file MP4
+     */
+    public byte[] transcode(MultipartFile video) {
+        MultipartBodyBuilder body = new MultipartBodyBuilder();
+        body.part("video", video.getResource())
+                .contentType(MediaType.parseMediaType(video.getContentType()));
+        try {
+            byte[] bytes = restClient.post()
+                    .uri("/api/ai/transcode")
+                    .contentType(MediaType.MULTIPART_FORM_DATA)
+                    .body(body.build())
+                    .retrieve()
+                    .body(byte[].class);
+            if (bytes == null || bytes.length == 0) {
+                throw new AppException(ErrorCode.VIDEO_CORRUPT, "ai-service trả về video rỗng sau khi chuyển mã");
+            }
+            return bytes;
+        } catch (RestClientResponseException e) {
+            throw translateErrorResponse(e);
+        } catch (RestClientException | IllegalStateException e) {
+            log.error("ai-service không phản hồi khi chuyển mã: {}", e.getMessage());
+            throw new AppException(ErrorCode.SERVICE_UNAVAILABLE, "Dịch vụ xử lý video hiện không khả dụng, vui lòng thử lại sau");
+        }
+    }
+
+    /**
+     * Tìm từ đồng nghĩa trong danh sách đã có (Gemini ở ai-service).
+     * @return null nếu gọi AI thất bại (bên gọi báo aiError để UI hiện thông báo, không chặn form)
+     */
+    public SynonymResult findSynonyms(String word, List<VocabEntry> existing) {
+        try {
+            AiServiceResponse<SynonymResult> response = restClient.post()
+                    .uri("/api/ai/vocabulary/synonyms")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(new SynonymRequest(word, existing))
+                    .retrieve()
+                    .body(SYNONYM_TYPE);
+            return response != null ? response.getData() : null;
+        } catch (Exception e) {
+            log.warn("Tìm từ đồng nghĩa qua ai-service thất bại cho '{}': {}", word, e.getMessage());
+            return null;
+        }
+    }
+
+    public record VocabEntry(String word, String categoryName) {
+    }
+
+    public record SynonymRequest(String word, List<VocabEntry> existing) {
+    }
+
+    @com.fasterxml.jackson.annotation.JsonIgnoreProperties(ignoreUnknown = true)
+    public record SynonymResult(boolean checked, List<VocabEntry> synonyms) {
     }
 
     /** Giữ nguyên lỗi nghiệp vụ của ai-service (vd video rỗng/sai định dạng) để client hiểu nguyên nhân. */

@@ -10,7 +10,9 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 /** Danh mục từ vựng. GET công khai; POST/PUT/DELETE chỉ ADMIN (khai trong SecurityConfig). */
 @Tag(name = "Category", description = "Danh mục từ vựng")
@@ -33,6 +35,12 @@ public class CategoryController {
     @GetMapping("/{id}")
     public ApiResponse<CategoryResponse> getById(@PathVariable Long id) {
         return ApiResponse.ok(categoryService.getById(id));
+    }
+
+    @Operation(summary = "Tải ảnh bìa danh mục (ADMIN; JPEG/PNG/WEBP/GIF, tối đa 5MB)")
+    @PostMapping(value = "/{id}/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ApiResponse<CategoryResponse> uploadImage(@PathVariable Long id, @RequestPart("image") MultipartFile image) {
+        return ApiResponse.ok(categoryService.uploadImage(id, image), "Đã cập nhật ảnh bìa");
     }
 
     @Operation(summary = "[ADMIN] Tạo danh mục")

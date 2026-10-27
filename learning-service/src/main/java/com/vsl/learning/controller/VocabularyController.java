@@ -3,14 +3,18 @@ package com.vsl.learning.controller;
 import com.vsl.common.response.ApiResponse;
 import com.vsl.common.response.PageResponse;
 import com.vsl.learning.dto.request.VocabularyRequest;
+import com.vsl.learning.dto.response.VocabularyExistsResponse;
 import com.vsl.learning.dto.response.VocabularyResponse;
+import com.vsl.learning.dto.response.VocabularySynonymResponse;
 import com.vsl.learning.service.VocabularyService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 /** Từ vựng. GET công khai; POST/PUT/DELETE chỉ ADMIN (khai trong SecurityConfig). */
 @Tag(name = "Vocabulary", description = "Từ vựng ngôn ngữ ký hiệu")
@@ -27,6 +31,32 @@ public class VocabularyController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
         return ApiResponse.ok(vocabularyService.getAll(page, size));
+    }
+
+    @Operation(summary = "Từ đã có trong kho chưa (bỏ dấu, không phân biệt hoa/thường)")
+    @GetMapping("/exists")
+    public ApiResponse<VocabularyExistsResponse> exists(@RequestParam String word) {
+        return ApiResponse.ok(vocabularyService.checkWordExists(word));
+    }
+
+    @Operation(summary = "Từ đồng nghĩa đã có trong kho (AI) - cần đăng nhập")
+    @GetMapping("/ai-synonyms")
+    public ApiResponse<VocabularySynonymResponse> aiSynonyms(@RequestParam String word) {
+        return ApiResponse.ok(vocabularyService.findSynonyms(word));
+    }
+
+    @Operation(summary = "Tải ảnh minh họa (ADMIN; JPEG/PNG/WEBP/GIF, tối đa 5MB)")
+    @PostMapping(value = "/{id}/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ApiResponse<VocabularyResponse> uploadImage(@PathVariable Long id, @RequestPart("image") MultipartFile image) {
+        return ApiResponse.ok(vocabularyService.uploadImage(id, image), "Đã cập nhật ảnh minh họa");
+    }
+
+    @Operation(summary = "Tải video hướng dẫn (ADMIN; tự chuyển sang MP4 H.264). expectedId: gán class AI (tùy chọn)")
+    @PostMapping(value = "/{id}/tutorial-video", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ApiResponse<VocabularyResponse> uploadTutorialVideo(@PathVariable Long id,
+                                                               @RequestPart("video") MultipartFile video,
+                                                               @RequestParam(required = false) Integer expectedId) {
+        return ApiResponse.ok(vocabularyService.uploadTutorialVideo(id, video, expectedId), "Đã cập nhật video hướng dẫn");
     }
 
     @Operation(summary = "Chi tiết từ vựng")

@@ -17,6 +17,10 @@ public interface VocabularyRepository extends JpaRepository<Vocabulary, Long> {
 
     boolean existsByCategoryId(Long categoryId);
 
+    boolean existsByExpectedId(Integer expectedId);
+
+    boolean existsByExpectedIdAndIdNot(Integer expectedId, Long id);
+
     @EntityGraph(attributePaths = {"category"})
     Optional<Vocabulary> findWithCategoryById(Long id);
 

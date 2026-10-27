@@ -35,6 +35,17 @@ ai-service:
   connect-timeout: 5s
   read-timeout: 120s   # suy luận video có thể lâu
 
+# Ảnh/video từ vựng + ảnh danh mục lưu ở MinIO (bucket do learning sở hữu, giữ tên như monolith).
+minio:
+  endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
+  public-endpoint: ${MINIO_PUBLIC_ENDPOINT:http://localhost:9000}
+  access-key: ${MINIO_USER:minioadmin}
+  secret-key: ${MINIO_PASSWORD:minioadmin}
+  buckets:
+    - tutorial-videos
+    - vocabulary-images
+    - category-images
+
 # Lấy số liệu tổng hợp (public-stats, dashboard admin, streak-reminder) từ service khác qua Eureka.
 identity-service:
   base-url: http://identity-service

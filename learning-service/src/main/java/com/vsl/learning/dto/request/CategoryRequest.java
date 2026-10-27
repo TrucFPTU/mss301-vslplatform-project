@@ -4,6 +4,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
+/** Tạo / sửa danh mục (admin). Ảnh bìa đi qua POST /api/categories/{id}/image. */
 @Data
 public class CategoryRequest {
 
@@ -13,7 +14,4 @@ public class CategoryRequest {
 
     @Size(max = 255, message = "Mô tả tối đa 255 ký tự")
     private String description;
-
-    @Size(max = 500, message = "URL ảnh tối đa 500 ký tự")
-    private String imageUrl;
 }

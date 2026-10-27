@@ -15,7 +15,12 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+/**
+ * Danh mục (bê từ CategoryServiceImpl monolith, thêm upload ảnh bìa).
+ * Sửa: tên trùng so không phân biệt hoa/thường + bỏ khoảng trắng thừa ("Động vật" = "động vật ").
+ */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -24,6 +29,7 @@ public class CategoryServiceImpl implements CategoryService {
 
     private final CategoryRepository categoryRepository;
     private final VocabularyRepository vocabularyRepository;
+    private final MediaStorage mediaStorage;
 
     @Override
     @Transactional(readOnly = true)
@@ -41,13 +47,13 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Override
     public CategoryResponse create(CategoryRequest request) {
-        if (categoryRepository.existsByName(request.getName())) {
-            throw new AppException(ErrorCode.VALIDATION_ERROR, "Tên danh mục đã tồn tại");
+        String name = request.getName().trim();
+        if (categoryRepository.existsByNameIgnoreCase(name)) {
+            throw new AppException(ErrorCode.CATEGORY_NAME_TAKEN);
         }
         Category saved = categoryRepository.save(Category.builder()
-                .name(request.getName())
+                .name(name)
                 .description(request.getDescription())
-                .imageUrl(request.getImageUrl())
                 .build());
         log.info("Admin created category id={}, name='{}'", saved.getId(), saved.getName());
         return toResponse(saved);
@@ -56,12 +62,12 @@ public class CategoryServiceImpl implements CategoryService {
     @Override
     public CategoryResponse update(Long id, CategoryRequest request) {
         Category category = getCategoryOrThrow(id);
-        if (!request.getName().equals(category.getName()) && categoryRepository.existsByName(request.getName())) {
-            throw new AppException(ErrorCode.VALIDATION_ERROR, "Tên danh mục đã tồn tại");
+        String name = request.getName().trim();
+        if (categoryRepository.existsByNameIgnoreCaseAndIdNot(name, id)) {
+            throw new AppException(ErrorCode.CATEGORY_NAME_TAKEN);
         }
-        category.setName(request.getName());
+        category.setName(name);
         category.setDescription(request.getDescription());
-        category.setImageUrl(request.getImageUrl());
         return toResponse(categoryRepository.save(category));
     }
 
@@ -73,7 +79,19 @@ public class CategoryServiceImpl implements CategoryService {
                     "Không thể xoá danh mục vì vẫn còn từ vựng nằm trong danh mục này");
         }
         categoryRepository.delete(category);
+        mediaStorage.deleteAfterCommit(MediaStorage.CATEGORY_IMAGE_BUCKET, category.getImageUrl());
         log.info("Admin deleted category id={}", id);
+    }
+
+    @Override
+    public CategoryResponse uploadImage(Long id, MultipartFile image) {
+        Category category = getCategoryOrThrow(id);
+        String url = mediaStorage.uploadImage(MediaStorage.CATEGORY_IMAGE_BUCKET, "category-" + id, image);
+        String old = category.getImageUrl();
+        category.setImageUrl(url);
+        Category saved = categoryRepository.save(category);
+        mediaStorage.deleteAfterCommit(MediaStorage.CATEGORY_IMAGE_BUCKET, old);
+        return toResponse(saved);
     }
 
     @Override
