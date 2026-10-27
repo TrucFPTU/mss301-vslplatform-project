@@ -26,6 +26,9 @@ public enum ErrorCode {
     AI_INFERENCE_ERROR("AI_3002", "Lỗi khi xử lý video", HttpStatus.INTERNAL_SERVER_ERROR),
     VIDEO_EMPTY("AI_3003", "Video rỗng", HttpStatus.BAD_REQUEST),
     VIDEO_INVALID_TYPE("AI_3004", "Định dạng video không hợp lệ", HttpStatus.BAD_REQUEST),
+    VIDEO_CORRUPT("AI_3005", "Video bị hỏng hoặc định dạng không được hỗ trợ", HttpStatus.UNPROCESSABLE_ENTITY),
+    VIDEO_NO_FRAMES("AI_3006", "Không thể đọc frame từ video", HttpStatus.UNPROCESSABLE_ENTITY),
+    AI_SERVICE_BUSY("AI_3007", "Hệ thống AI đang quá tải, vui lòng thử lại sau", HttpStatus.SERVICE_UNAVAILABLE),
 
     // ---- Social ----
     BLOG_NOT_FOUND("SOCIAL_4001", "Không tìm thấy bài viết", HttpStatus.NOT_FOUND),
