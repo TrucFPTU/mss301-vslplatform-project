@@ -15,6 +15,13 @@ public enum ErrorCode {
     VALIDATION_ERROR("SYS_0002", "Dữ liệu không hợp lệ", HttpStatus.BAD_REQUEST),
     NOT_FOUND("SYS_0003", "Không tìm thấy tài nguyên", HttpStatus.NOT_FOUND),
     FORBIDDEN("SYS_0004", "Không có quyền truy cập", HttpStatus.FORBIDDEN),
+    METHOD_NOT_ALLOWED("SYS_0005", "Phương thức HTTP không được hỗ trợ", HttpStatus.METHOD_NOT_ALLOWED),
+    PAYLOAD_TOO_LARGE("SYS_0006", "Dữ liệu tải lên vượt quá dung lượng cho phép", HttpStatus.PAYLOAD_TOO_LARGE),
+    UNSUPPORTED_MEDIA_TYPE("SYS_0007", "Định dạng nội dung không được hỗ trợ", HttpStatus.UNSUPPORTED_MEDIA_TYPE),
+    CONFLICT("SYS_0008", "Dữ liệu bị trùng hoặc xung đột", HttpStatus.CONFLICT),
+    FILE_UPLOAD_ERROR("SYS_0009", "Lỗi khi tải file lên kho lưu trữ", HttpStatus.SERVICE_UNAVAILABLE),
+    INVALID_FILE("SYS_0010", "File không hợp lệ", HttpStatus.BAD_REQUEST),
+    SERVICE_UNAVAILABLE("SYS_0011", "Dịch vụ liên quan tạm thời không khả dụng", HttpStatus.SERVICE_UNAVAILABLE),
 
     // ---- Auth / Identity ----
     UNAUTHENTICATED("AUTH_1001", "Chưa xác thực", HttpStatus.UNAUTHORIZED),

@@ -31,4 +31,11 @@ public class JwtAutoConfiguration {
     public JwtAuthenticationFilter jwtAuthenticationFilter(JwtService jwtService) {
         return new JwtAuthenticationFilter(jwtService);
     }
+
+    /** 401/403 dạng JSON cho tầng filter - mỗi SecurityConfig gắn qua exceptionHandling(...). */
+    @Bean
+    @ConditionalOnMissingBean
+    public JsonSecurityErrorHandler jsonSecurityErrorHandler() {
+        return new JsonSecurityErrorHandler();
+    }
 }

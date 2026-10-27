@@ -1,5 +1,6 @@
 package com.vsl.learning.config;
 
+import com.vsl.common.security.JsonSecurityErrorHandler;
 import com.vsl.common.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -24,6 +25,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final JsonSecurityErrorHandler securityErrorHandler;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -44,6 +46,9 @@ public class SecurityConfig {
                         .requestMatchers("/api/vocabularies/**", "/api/categories/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
+                // 401 (chưa đăng nhập) / 403 (thiếu quyền) dạng JSON thay vì 403 body rỗng mặc định
+                .exceptionHandling(e -> e.authenticationEntryPoint(securityErrorHandler)
+                        .accessDeniedHandler(securityErrorHandler))
                 .httpBasic(h -> h.disable())
                 .formLogin(f -> f.disable())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

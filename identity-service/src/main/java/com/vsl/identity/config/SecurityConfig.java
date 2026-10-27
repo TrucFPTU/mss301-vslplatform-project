@@ -1,5 +1,6 @@
 package com.vsl.identity.config;
 
+import com.vsl.common.security.JsonSecurityErrorHandler;
 import com.vsl.common.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
@@ -25,6 +26,7 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final JsonSecurityErrorHandler securityErrorHandler;
 
     /** Dùng để mã hoá mật khẩu khi đăng ký & kiểm tra khi đăng nhập. */
     @Bean
@@ -52,6 +54,9 @@ public class SecurityConfig {
                         .requestMatchers("/api/users/internal/**").hasRole("SERVICE")
                         .anyRequest().authenticated()
                 )
+                // 401 (chưa đăng nhập) / 403 (thiếu quyền) dạng JSON thay vì 403 body rỗng mặc định
+                .exceptionHandling(e -> e.authenticationEntryPoint(securityErrorHandler)
+                        .accessDeniedHandler(securityErrorHandler))
                 .httpBasic(h -> h.disable())
                 .formLogin(f -> f.disable())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

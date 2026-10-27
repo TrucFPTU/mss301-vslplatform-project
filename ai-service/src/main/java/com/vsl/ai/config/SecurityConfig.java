@@ -1,6 +1,7 @@
 package com.vsl.ai.config;
 
 import com.vsl.ai.security.AsyncSecurityContextPersistenceFilter;
+import com.vsl.common.security.JsonSecurityErrorHandler;
 import com.vsl.common.security.JwtAuthenticationFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -24,9 +25,12 @@ import org.springframework.security.web.context.SecurityContextRepository;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final JsonSecurityErrorHandler securityErrorHandler;
 
-    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
+    public SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter,
+                          JsonSecurityErrorHandler securityErrorHandler) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+        this.securityErrorHandler = securityErrorHandler;
     }
 
     /** Lưu context vào request attribute (vẫn stateless - không dùng session). */
@@ -49,6 +53,9 @@ public class SecurityConfig {
                                 "/dev/**").permitAll()
                         .anyRequest().authenticated()
                 )
+                // 401 (chưa đăng nhập) / 403 (thiếu quyền) dạng JSON thay vì 403 body rỗng mặc định
+                .exceptionHandling(e -> e.authenticationEntryPoint(securityErrorHandler)
+                        .accessDeniedHandler(securityErrorHandler))
                 .httpBasic(h -> h.disable())
                 .formLogin(f -> f.disable())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
