@@ -48,6 +48,12 @@ class AuthServiceTest {
     @Mock
     private RefreshTokenService refreshTokenService;
 
+    @Mock
+    private OtpService otpService;
+
+    @Mock
+    private EmailService emailService;
+
     @InjectMocks
     private AuthServiceImpl authService;
 
@@ -74,10 +80,12 @@ class AuthServiceTest {
                 .email("test@example.com")
                 .password("password123")
                 .fullName("Test User")
+                .otp("123456")
                 .build();
 
         when(userRepository.existsByUsername(anyString())).thenReturn(false);
         when(userRepository.existsByEmail(anyString())).thenReturn(false);
+        when(otpService.verifyOtp(eq("test@example.com"), eq("123456"))).thenReturn(true);
         when(passwordEncoder.encode(anyString())).thenReturn("hashed_password");
         when(userRepository.save(any(User.class))).thenReturn(sampleUser);
         when(jwtProperties.getAccessTokenTtlMinutes()).thenReturn(30L);

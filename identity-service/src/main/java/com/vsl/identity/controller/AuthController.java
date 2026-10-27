@@ -1,10 +1,14 @@
 package com.vsl.identity.controller;
 
 import com.vsl.common.response.ApiResponse;
+import com.vsl.identity.dto.ForgotPasswordRequest;
 import com.vsl.identity.dto.LoginRequest;
 import com.vsl.identity.dto.RefreshTokenRequest;
 import com.vsl.identity.dto.RegisterRequest;
+import com.vsl.identity.dto.ResetPasswordRequest;
+import com.vsl.identity.dto.SendRegisterOtpRequest;
 import com.vsl.identity.dto.TokenResponse;
+import com.vsl.identity.dto.VerifyOtpRequest;
 import com.vsl.identity.service.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -21,8 +25,15 @@ public class AuthController {
 
     private final AuthService authService;
 
+    @PostMapping("/send-register-otp")
+    @Operation(summary = "Gửi OTP đăng ký", description = "Gửi mã OTP tới email trước khi đăng ký")
+    public ApiResponse<Void> sendRegisterOtp(@Valid @RequestBody SendRegisterOtpRequest request) {
+        authService.sendRegisterOtp(request);
+        return ApiResponse.ok("Đã gửi mã OTP tới email của bạn");
+    }
+
     @PostMapping("/register")
-    @Operation(summary = "Đăng ký tài khoản mới", description = "Tạo tài khoản và trả về Access Token + Refresh Token")
+    @Operation(summary = "Đăng ký tài khoản mới", description = "Xác thực OTP rồi tạo tài khoản, trả về Access Token + Refresh Token")
     public ApiResponse<TokenResponse> register(
             @Valid @RequestBody RegisterRequest request,
             HttpServletRequest httpRequest) {
@@ -59,6 +70,27 @@ public class AuthController {
             authService.logout(request.getRefreshToken());
         }
         return ApiResponse.ok("Đăng xuất thành công");
+    }
+
+    @PostMapping("/forgot-password")
+    @Operation(summary = "Quên mật khẩu", description = "Gửi OTP đặt lại mật khẩu tới email đã đăng ký")
+    public ApiResponse<Void> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        authService.forgotPassword(request);
+        return ApiResponse.ok("Đã gửi mã OTP đặt lại mật khẩu tới email của bạn");
+    }
+
+    @PostMapping("/verify-otp")
+    @Operation(summary = "Xác thực OTP", description = "Kiểm tra OTP hợp lệ trước khi đặt lại mật khẩu")
+    public ApiResponse<Void> verifyOtp(@Valid @RequestBody VerifyOtpRequest request) {
+        authService.verifyOtp(request);
+        return ApiResponse.ok("Mã OTP hợp lệ");
+    }
+
+    @PostMapping("/reset-password")
+    @Operation(summary = "Đặt lại mật khẩu", description = "Đặt lại mật khẩu mới sau khi xác thực OTP")
+    public ApiResponse<Void> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        authService.resetPassword(request);
+        return ApiResponse.ok("Đặt lại mật khẩu thành công");
     }
 
     private String extractIpAddress(HttpServletRequest request) {

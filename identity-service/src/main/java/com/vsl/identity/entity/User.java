@@ -47,6 +47,21 @@ public class User {
     @Builder.Default
     private UserStatus status = UserStatus.ACTIVE;
 
+    @Column(name = "last_login")
+    private LocalDateTime lastLogin;
+
+    /** Mặc định TẮT — người dùng phải tự BẬT để nhận email nhắc nhở streak. */
+    @Column(name = "email_notifications_enabled", nullable = false)
+    @Builder.Default
+    private boolean emailNotificationsEnabled = false;
+
+    /**
+     * Ngày đã gửi mail nhắc streak lần cuối. Set null khi người dùng luyện tập lại
+     * (do streak-scheduler quét theo ngày) — tránh gửi trùng trong cùng một ngày.
+     */
+    @Column(name = "streak_reminder_sent_date")
+    private java.time.LocalDate streakReminderSentDate;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

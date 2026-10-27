@@ -54,6 +54,7 @@ class AuthControllerTest {
                 .email("test@example.com")
                 .password("password123")
                 .fullName("Test User")
+                .otp("123456")
                 .build();
 
         TokenResponse tokenResponse = TokenResponse.builder()

@@ -20,6 +20,7 @@ public enum ErrorCode {
     UNAUTHENTICATED("AUTH_1001", "Chưa xác thực", HttpStatus.UNAUTHORIZED),
     INVALID_TOKEN("AUTH_1002", "Token không hợp lệ hoặc đã hết hạn", HttpStatus.UNAUTHORIZED),
     INVALID_CREDENTIALS("AUTH_1003", "Sai thông tin đăng nhập", HttpStatus.UNAUTHORIZED),
+    INVALID_OTP("AUTH_1004", "Mã OTP không đúng hoặc đã hết hạn", HttpStatus.BAD_REQUEST),
 
     // ---- AI ----
     AI_MODEL_NOT_LOADED("AI_3001", "Model AI chưa sẵn sàng", HttpStatus.SERVICE_UNAVAILABLE),

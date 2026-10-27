@@ -30,4 +30,8 @@ public class RegisterRequest {
     @NotBlank(message = "Họ và tên không được để trống")
     @Size(max = 100, message = "Họ và tên tối đa 100 ký tự")
     private String fullName;
+
+    @NotBlank(message = "Mã OTP không được để trống")
+    @Size(min = 6, max = 6, message = "Mã OTP gồm 6 chữ số")
+    private String otp;
 }
