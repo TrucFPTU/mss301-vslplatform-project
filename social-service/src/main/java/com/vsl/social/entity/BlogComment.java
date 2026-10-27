@@ -35,4 +35,8 @@ public class BlogComment extends BaseEntity {
 
     @Column(nullable = false, columnDefinition = "TEXT")
     private String content;
+
+    /** Người được nhắc tên (@mention) trong nội dung - nhận thông báo MENTION. */
+    @Column(name = "mentioned_user_id")
+    private Long mentionedUserId;
 }

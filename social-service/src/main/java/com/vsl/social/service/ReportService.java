@@ -14,7 +14,11 @@ public interface ReportService {
 
     ReportDetailResponse getReportDetail(Long id);
 
-    ReportResponse resolve(Long id);
+    long countPending();
 
+    /** Tố cáo đúng: gỡ bài với lý do (hiển thị cho tác giả) và đóng MỌI tố cáo đang chờ của bài. */
+    ReportResponse resolve(Long id, Long adminId, String reason);
+
+    /** Tố cáo sai: chỉ đóng tố cáo này, bài giữ nguyên. */
     ReportResponse reject(Long id);
 }

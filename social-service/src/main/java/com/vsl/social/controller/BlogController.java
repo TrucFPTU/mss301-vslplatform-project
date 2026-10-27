@@ -5,19 +5,27 @@ import com.vsl.common.response.PageResponse;
 import com.vsl.social.dto.BlogDetailResponse;
 import com.vsl.social.dto.BlogRequest;
 import com.vsl.social.dto.BlogResponse;
+import com.vsl.social.dto.BlogSearchResponse;
 import com.vsl.social.dto.CommentRequest;
 import com.vsl.social.dto.CommentResponse;
 import com.vsl.social.dto.LikeResponse;
+import com.vsl.social.dto.LikerResponse;
 import com.vsl.social.dto.PublicBlogStatsResponse;
 import com.vsl.social.dto.ReportRequest;
+import com.vsl.social.dto.ShareRequest;
+import com.vsl.social.dto.ShareResponse;
+import com.vsl.social.dto.SharedBlogResponse;
 import com.vsl.social.service.BlogService;
 import com.vsl.social.service.CommentService;
 import com.vsl.social.service.LikeService;
 import com.vsl.social.service.ReportService;
 import com.vsl.social.service.ShareService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -27,13 +35,16 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 /**
  * Bài viết + các tương tác trên bài (like, share, report, comment).
  * GET là public (khai trong SecurityConfig) — khi là khách, userId = null.
  */
+@Tag(name = "Blog", description = "Bài viết, tìm kiếm, tương tác")
 @RestController
 @RequestMapping("/api/blogs")
 @RequiredArgsConstructor
@@ -47,11 +58,22 @@ public class BlogController {
 
     // ---- Bài viết ----
 
+    @Operation(summary = "Bảng tin: bài công khai (đăng nhập thì ưu tiên người đang theo dõi); keyword lọc theo tiêu đề")
     @GetMapping
     public ApiResponse<PageResponse<BlogResponse>> list(@RequestParam(required = false) String keyword,
+                                                        @AuthenticationPrincipal Long userId,
                                                         @RequestParam(defaultValue = "0") int page,
                                                         @RequestParam(defaultValue = "10") int size) {
-        return ApiResponse.ok(blogService.listPublished(keyword, page, size));
+        return ApiResponse.ok(blogService.listPublished(keyword, userId, page, size));
+    }
+
+    @Operation(summary = "Tìm bài viết (tiêu đề / nội dung / tác giả) và người dùng")
+    @GetMapping("/search")
+    public ApiResponse<BlogSearchResponse> search(@RequestParam(required = false) String keyword,
+                                                  @AuthenticationPrincipal Long userId,
+                                                  @RequestParam(defaultValue = "0") int page,
+                                                  @RequestParam(defaultValue = "10") int size) {
+        return ApiResponse.ok(blogService.search(keyword, userId, page, size));
     }
 
     /** Số liệu công khai cho trang chủ / dashboard tổng hợp (learning-service gọi sang). */
@@ -66,12 +88,22 @@ public class BlogController {
         return ApiResponse.ok(blogService.getDetail(id, userId));
     }
 
+    @Operation(summary = "Bài của một tác giả (chính chủ / admin thấy cả nháp và bài bị gỡ)")
     @GetMapping("/user/{authorId}")
     public ApiResponse<PageResponse<BlogResponse>> byAuthor(@PathVariable Long authorId,
                                                             @AuthenticationPrincipal Long userId,
                                                             @RequestParam(defaultValue = "0") int page,
                                                             @RequestParam(defaultValue = "10") int size) {
         return ApiResponse.ok(blogService.listByAuthor(authorId, userId, page, size));
+    }
+
+    @Operation(summary = "Bài hiện trên trang cá nhân nhờ chia sẻ (chính chủ / bạn bè chia sẻ cho)")
+    @GetMapping("/user/{userId}/shared")
+    public ApiResponse<PageResponse<SharedBlogResponse>> sharedOnProfile(@PathVariable Long userId,
+                                                                         @AuthenticationPrincipal Long viewerId,
+                                                                         @RequestParam(defaultValue = "0") int page,
+                                                                         @RequestParam(defaultValue = "10") int size) {
+        return ApiResponse.ok(blogService.listSharedOnProfile(userId, viewerId, page, size));
     }
 
     @PostMapping
@@ -94,6 +126,19 @@ public class BlogController {
         return ApiResponse.ok("Đã xóa bài viết");
     }
 
+    @Operation(summary = "Tải ảnh bìa (JPEG/PNG/WEBP/GIF, tối đa 5MB)")
+    @PostMapping(value = "/{id}/thumbnail", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ApiResponse<BlogDetailResponse> uploadThumbnail(@PathVariable Long id,
+                                                           @AuthenticationPrincipal Long userId,
+                                                           @RequestPart("image") MultipartFile image) {
+        return ApiResponse.ok(blogService.uploadThumbnail(id, userId, image), "Đã cập nhật ảnh bìa");
+    }
+
+    @DeleteMapping("/{id}/thumbnail")
+    public ApiResponse<BlogDetailResponse> removeThumbnail(@PathVariable Long id, @AuthenticationPrincipal Long userId) {
+        return ApiResponse.ok(blogService.removeThumbnail(id, userId), "Đã xóa ảnh bìa");
+    }
+
     // ---- Like / Share / Report ----
 
     @PostMapping("/{id}/likes")
@@ -106,10 +151,21 @@ public class BlogController {
         return ApiResponse.ok(likeService.unlike(id, userId));
     }
 
-    /** Trả về tổng số lượt chia sẻ sau khi chia sẻ. */
+    @Operation(summary = "Những người đã like bài")
+    @GetMapping("/{id}/likes")
+    public ApiResponse<PageResponse<LikerResponse>> likers(@PathVariable Long id,
+                                                           @AuthenticationPrincipal Long userId,
+                                                           @RequestParam(defaultValue = "0") int page,
+                                                           @RequestParam(defaultValue = "20") int size) {
+        return ApiResponse.ok(blogService.listLikers(id, userId, page, size));
+    }
+
+    @Operation(summary = "Chia sẻ: COPY_URL (mặc định) hoặc PROFILE (trang của mình / của một người bạn)")
     @PostMapping("/{id}/shares")
-    public ApiResponse<Long> share(@PathVariable Long id, @AuthenticationPrincipal Long userId) {
-        return ApiResponse.ok(shareService.share(id, userId), "Đã chia sẻ bài viết");
+    public ApiResponse<ShareResponse> share(@PathVariable Long id,
+                                            @AuthenticationPrincipal Long userId,
+                                            @RequestBody(required = false) ShareRequest req) {
+        return ApiResponse.ok(shareService.share(id, userId, req), "Đã chia sẻ bài viết");
     }
 
     @PostMapping("/{id}/reports")

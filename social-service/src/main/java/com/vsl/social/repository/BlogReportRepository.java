@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
 import java.util.Optional;
+import java.util.List;
 
 public interface BlogReportRepository extends JpaRepository<BlogReport, Long> {
 
@@ -25,5 +26,9 @@ public interface BlogReportRepository extends JpaRepository<BlogReport, Long> {
     Optional<BlogReport> findWithBlogById(Long id);
 
     long countByStatus(ReportStatus status);
+
+    boolean existsByBlogIdAndStatus(Long blogId, ReportStatus status);
+
+    List<BlogReport> findByBlogIdAndStatus(Long blogId, ReportStatus status);
 }
 

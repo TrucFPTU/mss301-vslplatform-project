@@ -54,7 +54,18 @@ public enum ErrorCode {
     BLOG_HIDE_FORBIDDEN("SOCIAL_4005", "Chỉ ADMIN được ẩn bài viết", HttpStatus.FORBIDDEN),
     REPORT_OWN_BLOG("SOCIAL_4006", "Không thể báo cáo bài viết của chính mình", HttpStatus.BAD_REQUEST),
     REPORT_ALREADY_PENDING("SOCIAL_4007", "Bạn đã báo cáo bài viết này, đang chờ xử lý", HttpStatus.CONFLICT),
-    CANNOT_FOLLOW_SELF("SOCIAL_4008", "Không thể tự theo dõi chính mình", HttpStatus.BAD_REQUEST);
+    CANNOT_FOLLOW_SELF("SOCIAL_4008", "Không thể tự theo dõi chính mình", HttpStatus.BAD_REQUEST),
+    BLOG_REJECTED("SOCIAL_4009", "Bài viết không phù hợp với tiêu chuẩn cộng đồng", HttpStatus.UNPROCESSABLE_ENTITY),
+    BLOG_CONTENT_ALREADY_REPORTED("SOCIAL_4010", "Nội dung này trùng với một bài viết đã bị tố cáo, không thể đăng", HttpStatus.CONFLICT),
+    BLOG_DUPLICATE_CONTENT("SOCIAL_4011", "Nội dung trùng với một bài viết đã đăng", HttpStatus.CONFLICT),
+    BLOG_DUPLICATE_TITLE("SOCIAL_4012", "Tiêu đề trùng với một bài viết đã đăng", HttpStatus.CONFLICT),
+    BLOG_DUPLICATE_CONTENT_AI("SOCIAL_4013", "Nội dung trùng ý với một bài viết đã có", HttpStatus.CONFLICT),
+    BLOG_UNDER_REPORT("SOCIAL_4014", "Bài viết đang bị tố cáo hoặc đã bị gỡ, không thể xóa", HttpStatus.CONFLICT),
+    BLOG_HIDDEN_LOCKED("SOCIAL_4015", "Bài viết đã bị gỡ, không thể chỉnh sửa", HttpStatus.CONFLICT),
+    COMMENT_REJECTED("SOCIAL_4016", "Bình luận không phù hợp với tiêu chuẩn cộng đồng", HttpStatus.UNPROCESSABLE_ENTITY),
+    NOT_FRIEND("SOCIAL_4017", "Chỉ có thể chia sẻ lên trang cá nhân của bạn bè (hai người theo dõi nhau)", HttpStatus.FORBIDDEN),
+    CANNOT_SHARE_TO_SELF("SOCIAL_4018", "Không thể chia sẻ lên trang cá nhân cho chính mình", HttpStatus.BAD_REQUEST),
+    USER_NOT_FOUND("SOCIAL_4019", "Không tìm thấy người dùng", HttpStatus.NOT_FOUND);
 
     private final String code;
     private final String defaultMessage;

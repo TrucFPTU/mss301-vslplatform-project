@@ -2,6 +2,8 @@ package com.vsl.social.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
@@ -32,4 +34,14 @@ public class BlogShare extends BaseEntity {
 
     @Column(name = "user_id", nullable = false)
     private Long userId;
+
+    /** COPY_URL: sao chép link; PROFILE: đăng lên trang cá nhân (của mình, hoặc của một người bạn). */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "share_type", nullable = false, length = 20, columnDefinition = "varchar(20) default 'COPY_URL'")
+    @Builder.Default
+    private ShareType shareType = ShareType.COPY_URL;
+
+    /** Người nhận khi chia sẻ lên trang cá nhân của bạn bè (null = trang của chính mình / chỉ copy link). */
+    @Column(name = "recipient_id")
+    private Long recipientId;
 }

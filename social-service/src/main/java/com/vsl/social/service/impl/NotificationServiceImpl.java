@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Objects;
 
 @Service
@@ -19,11 +20,18 @@ import java.util.Objects;
 public class NotificationServiceImpl implements NotificationService {
 
     private final BlogNotificationRepository notificationRepository;
+    private final SocialViews views;
 
     @Override
     @Transactional
     public void notify(Long recipientId, Long actorId, NotificationType type, Long blogId) {
-        if (Objects.equals(recipientId, actorId)) {
+        notify(recipientId, actorId, type, blogId, null, null);
+    }
+
+    @Override
+    @Transactional
+    public void notify(Long recipientId, Long actorId, NotificationType type, Long blogId, Long commentId, Long replyId) {
+        if (recipientId == null || Objects.equals(recipientId, actorId)) {
             return;
         }
         notificationRepository.save(BlogNotification.builder()
@@ -31,15 +39,16 @@ public class NotificationServiceImpl implements NotificationService {
                 .actorId(actorId)
                 .type(type)
                 .blogId(blogId)
+                .commentId(commentId)
+                .replyId(replyId)
                 .build());
     }
 
     @Override
     @Transactional(readOnly = true)
     public PageResponse<NotificationResponse> list(Long userId, int page, int size) {
-        return Paging.toResponse(
-                notificationRepository.findByRecipientId(userId, Paging.newestFirst(page, size)),
-                NotificationResponse::from);
+        return SocialViews.page(notificationRepository.findByRecipientId(userId, Paging.newestFirst(page, size)),
+                views::notifications);
     }
 
     @Override
@@ -55,7 +64,7 @@ public class NotificationServiceImpl implements NotificationService {
                 .filter(x -> Objects.equals(x.getRecipientId(), userId))
                 .orElseThrow(() -> new AppException(ErrorCode.NOTIFICATION_NOT_FOUND));
         n.setRead(true);
-        return NotificationResponse.from(n);
+        return views.notifications(List.of(n)).get(0);
     }
 
     @Override

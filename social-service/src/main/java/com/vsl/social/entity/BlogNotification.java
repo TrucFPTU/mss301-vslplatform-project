@@ -38,6 +38,13 @@ public class BlogNotification extends BaseEntity {
     @Column(name = "blog_id")
     private Long blogId;
 
+    /** Bình luận / trả lời liên quan (để mở đúng chỗ khi bấm thông báo). */
+    @Column(name = "comment_id")
+    private Long commentId;
+
+    @Column(name = "reply_id")
+    private Long replyId;
+
     @Builder.Default
     @Column(name = "is_read", nullable = false)
     private boolean read = false;

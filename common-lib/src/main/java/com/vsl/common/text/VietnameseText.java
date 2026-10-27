@@ -1,10 +1,14 @@
-package com.vsl.learning.util;
+package com.vsl.common.text;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.text.Normalizer;
+import java.util.HexFormat;
 
 /**
  * Chuẩn hóa văn bản tiếng Việt để SO KHỚP (không dùng để hiển thị). Bê từ monolith.
- * Dùng cho việc tìm từ vựng trùng (không phân biệt dấu / hoa-thường / cách trình bày).
+ * Dùng chung: learning (tìm từ vựng trùng) và social (chặn đăng lại bài trùng).
  */
 public final class VietnameseText {
 
@@ -29,5 +33,18 @@ public final class VietnameseText {
     /** Chuẩn hóa để LƯU/HIỂN THỊ: chỉ trim và gom khoảng trắng, giữ nguyên dấu. */
     public static String normalize(String word) {
         return word == null ? "" : word.trim().replaceAll("\\s+", " ");
+    }
+
+    /**
+     * Dấu vân tay SHA-256 (hex, 64 ký tự) của văn bản đã {@link #fold}: hai văn bản chỉ khác dấu /
+     * hoa-thường / khoảng trắng cho cùng kết quả. Lưu cột này để so trùng bằng truy vấn có index.
+     */
+    public static String fingerprint(String s) {
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256").digest(fold(s).getBytes(StandardCharsets.UTF_8));
+            return HexFormat.of().formatHex(digest);
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 không khả dụng", e);
+        }
     }
 }

@@ -3,6 +3,7 @@ package com.vsl.social.controller;
 import com.vsl.common.response.PageResponse;
 import com.vsl.social.dto.ReportDetailResponse;
 import com.vsl.social.dto.ReportResponse;
+import com.vsl.social.dto.UserBriefResponse;
 import com.vsl.social.entity.BlogStatus;
 import com.vsl.social.entity.ReportStatus;
 import com.vsl.social.service.ReportService;
@@ -22,6 +23,7 @@ import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -49,16 +51,7 @@ class BlogReportAdminControllerTest {
     @DisplayName("GET /api/blogs/admin/reports -> 200 OK va danh sach phan trang")
     void listReports_Returns200AndPageResponse() throws Exception {
         Instant now = Instant.now();
-        ReportResponse item = new ReportResponse(
-                1L,
-                10L,
-                "Bài viết vi phạm",
-                100L,
-                "Quảng cáo rác (SPAM)",
-                ReportStatus.PENDING,
-                now,
-                now
-        );
+        ReportResponse item = new ReportResponse(1L, 10L, "Bài viết vi phạm", BlogStatus.PUBLISHED, new UserBriefResponse(100L, "reporter", "Người Báo", null, "Người Báo"), "Quảng cáo rác (SPAM)", ReportStatus.PENDING, now, now);
 
         PageResponse<ReportResponse> pageResponse = PageResponse.<ReportResponse>builder()
                 .content(List.of(item))
@@ -91,19 +84,7 @@ class BlogReportAdminControllerTest {
     @DisplayName("GET /api/blogs/admin/reports/{id} -> 200 OK va chi tiet kem blog")
     void getReportDetail_Returns200() throws Exception {
         Instant now = Instant.now();
-        ReportDetailResponse detail = new ReportDetailResponse(
-                1L,
-                10L,
-                "Bài viết vi phạm",
-                "Nội dung vi phạm xúc phạm cá nhân...",
-                BlogStatus.PUBLISHED,
-                200L,
-                100L,
-                "Xúc phạm cá nhân",
-                ReportStatus.PENDING,
-                now,
-                now
-        );
+        ReportDetailResponse detail = new ReportDetailResponse(1L, 10L, "Bài viết vi phạm", "Nội dung vi phạm xúc phạm cá nhân...", null, BlogStatus.PUBLISHED, null, new UserBriefResponse(200L, "author", "Tác Giả", null, "Tác Giả"), new UserBriefResponse(100L, "reporter", "Người Báo", null, "Người Báo"), "Xúc phạm cá nhân", ReportStatus.PENDING, now, now);
 
         when(reportService.getReportDetail(1L)).thenReturn(detail);
 
@@ -123,43 +104,26 @@ class BlogReportAdminControllerTest {
     @DisplayName("PUT /api/blogs/admin/reports/{id}/resolve -> 200 OK va trang thai RESOLVED")
     void resolve_Returns200() throws Exception {
         Instant now = Instant.now();
-        ReportResponse resolved = new ReportResponse(
-                1L,
-                10L,
-                "Bài viết đã bị ẩn",
-                100L,
-                "Nội dung nhạy cảm",
-                ReportStatus.RESOLVED,
-                now,
-                now
-        );
+        ReportResponse resolved = new ReportResponse(1L, 10L, "Bài viết đã bị ẩn", BlogStatus.PUBLISHED, new UserBriefResponse(100L, "reporter", "Người Báo", null, "Người Báo"), "Nội dung nhạy cảm", ReportStatus.RESOLVED, now, now);
 
-        when(reportService.resolve(1L)).thenReturn(resolved);
+        when(reportService.resolve(eq(1L), any(), eq("Spam"))).thenReturn(resolved);
 
         mockMvc.perform(put("/api/blogs/admin/reports/{id}/resolve", 1L)
-                        .contentType(MediaType.APPLICATION_JSON))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"Spam\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value("SUCCESS"))
                 .andExpect(jsonPath("$.data.status").value("RESOLVED"))
-                .andExpect(jsonPath("$.message").value("Đã xử lý vi phạm và ẩn bài viết thành công"));
+                .andExpect(jsonPath("$.message").value("Đã xử lý vi phạm và gỡ bài viết"));
 
-        verify(reportService).resolve(1L);
+        verify(reportService).resolve(eq(1L), any(), eq("Spam"));
     }
 
     @Test
     @DisplayName("PUT /api/blogs/admin/reports/{id}/reject -> 200 OK va trang thai REJECTED")
     void reject_Returns200() throws Exception {
         Instant now = Instant.now();
-        ReportResponse rejected = new ReportResponse(
-                1L,
-                10L,
-                "Bài viết hợp lệ",
-                100L,
-                "Báo cáo sai sự thật",
-                ReportStatus.REJECTED,
-                now,
-                now
-        );
+        ReportResponse rejected = new ReportResponse(1L, 10L, "Bài viết hợp lệ", BlogStatus.PUBLISHED, new UserBriefResponse(100L, "reporter", "Người Báo", null, "Người Báo"), "Báo cáo sai sự thật", ReportStatus.REJECTED, now, now);
 
         when(reportService.reject(1L)).thenReturn(rejected);
 
@@ -174,25 +138,21 @@ class BlogReportAdminControllerTest {
     }
 
     @Test
-    @DisplayName("GET /api/admin/reports -> hoat dong voi route alias")
-    void aliasRoute_WorksProperly() throws Exception {
-        PageResponse<ReportResponse> emptyPage = PageResponse.<ReportResponse>builder()
-                .content(List.of())
-                .page(0)
-                .size(10)
-                .totalElements(0L)
-                .totalPages(0)
-                .last(true)
-                .build();
+    @DisplayName("PUT /api/blogs/admin/reports/{id}/resolve thiếu lý do -> 400, không gọi service")
+    void resolve_WithoutReason_Returns400() throws Exception {
+        mockMvc.perform(put("/api/blogs/admin/reports/{id}/resolve", 1L)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"  \"}"))
+                .andExpect(status().isBadRequest());
+        verify(reportService, never()).resolve(any(), any(), any());
+    }
 
-        when(reportService.listReports(any(), eq(0), eq(10))).thenReturn(emptyPage);
-
-        mockMvc.perform(get("/api/admin/reports")
-                        .param("page", "0")
-                        .param("size", "10")
-                        .contentType(MediaType.APPLICATION_JSON))
+    @Test
+    @DisplayName("GET /api/blogs/admin/reports/pending-count -> số báo cáo chờ")
+    void pendingCount_Returns200() throws Exception {
+        when(reportService.countPending()).thenReturn(4L);
+        mockMvc.perform(get("/api/blogs/admin/reports/pending-count"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value("SUCCESS"))
-                .andExpect(jsonPath("$.data.totalElements").value(0));
+                .andExpect(jsonPath("$.data").value(4));
     }
 }

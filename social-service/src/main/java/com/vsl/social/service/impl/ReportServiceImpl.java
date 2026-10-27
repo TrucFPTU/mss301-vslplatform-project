@@ -8,26 +8,30 @@ import com.vsl.social.dto.ReportRequest;
 import com.vsl.social.dto.ReportResponse;
 import com.vsl.social.entity.Blog;
 import com.vsl.social.entity.BlogReport;
-import com.vsl.social.entity.BlogStatus;
 import com.vsl.social.entity.ReportStatus;
 import com.vsl.social.repository.BlogReportRepository;
 import com.vsl.social.service.BlogService;
 import com.vsl.social.service.ReportService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Objects;
 
-import org.springframework.data.domain.Page;
-
-/** Người dùng báo cáo bài viết. Phần admin duyệt báo cáo: chờ thống nhất với người phụ trách Admin. */
+/**
+ * Báo cáo vi phạm. Sửa so với bản trước: "resolve" ẩn bài nhưng KHÔNG có lý do và để các tố cáo khác của
+ * cùng bài treo PENDING; giờ resolve = gỡ bài kèm lý do + đóng mọi tố cáo đang chờ (như removeBlogByAdmin
+ * của monolith), reject = chỉ đóng tố cáo đó.
+ */
 @Service
 @RequiredArgsConstructor
 public class ReportServiceImpl implements ReportService {
 
     private final BlogService blogService;
     private final BlogReportRepository blogReportRepository;
+    private final SocialViews views;
 
     @Override
     @Transactional
@@ -53,34 +57,49 @@ public class ReportServiceImpl implements ReportService {
         Page<BlogReport> result = status == null
                 ? blogReportRepository.findAllWithBlog(Paging.newestFirst(page, size))
                 : blogReportRepository.findByStatus(status, Paging.newestFirst(page, size));
-        return Paging.toResponse(result, ReportResponse::from);
+        return SocialViews.page(result, views::reports);
     }
 
     @Override
     @Transactional(readOnly = true)
     public ReportDetailResponse getReportDetail(Long id) {
-        return ReportDetailResponse.from(getReport(id));
+        return views.reportDetail(getReport(id));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public long countPending() {
+        return blogReportRepository.countByStatus(ReportStatus.PENDING);
     }
 
     @Override
     @Transactional
-    public ReportResponse resolve(Long id) {
-        BlogReport report = getReport(id);
+    public ReportResponse resolve(Long id, Long adminId, String reason) {
+        BlogReport report = getPendingReport(id);
+        // hide(): HIDDEN + lý do + chuyển MỌI tố cáo PENDING của bài (kể cả tố cáo này) sang RESOLVED.
+        blogService.hide(report.getBlog().getId(), adminId, reason);
         report.setStatus(ReportStatus.RESOLVED);
-        report.getBlog().setStatus(BlogStatus.HIDDEN);
-        return ReportResponse.from(report);
+        return views.reports(List.of(report)).get(0);
     }
 
     @Override
     @Transactional
     public ReportResponse reject(Long id) {
-        BlogReport report = getReport(id);
+        BlogReport report = getPendingReport(id);
         report.setStatus(ReportStatus.REJECTED);
-        return ReportResponse.from(report);
+        return views.reports(List.of(report)).get(0);
+    }
+
+    private BlogReport getPendingReport(Long id) {
+        BlogReport report = getReport(id);
+        if (report.getStatus() != ReportStatus.PENDING) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, "Báo cáo này đã được xử lý");
+        }
+        return report;
     }
 
     private BlogReport getReport(Long id) {
         return blogReportRepository.findWithBlogById(id)
-                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND));
+                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "Không tìm thấy báo cáo"));
     }
 }

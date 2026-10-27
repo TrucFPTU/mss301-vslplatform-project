@@ -2,6 +2,7 @@ package com.vsl.social.controller;
 
 import com.vsl.common.response.ApiResponse;
 import com.vsl.common.response.PageResponse;
+import com.vsl.social.dto.HideBlogRequest;
 import com.vsl.social.dto.ReportDetailResponse;
 import com.vsl.social.dto.ReportResponse;
 import com.vsl.social.entity.ReportStatus;
@@ -9,13 +10,15 @@ import com.vsl.social.service.ReportService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "Admin Blog Reports", description = "API Quản trị & Duyệt Báo cáo Vi phạm Bài viết (Dành cho ADMIN)")
 @RestController
-@RequestMapping({"/api/blogs/admin/reports", "/api/admin/reports"})
+@RequestMapping("/api/blogs/admin/reports")
 @RequiredArgsConstructor
 @PreAuthorize("hasRole('ADMIN')")
 public class BlogReportAdminController {
@@ -44,13 +47,21 @@ public class BlogReportAdminController {
         return ApiResponse.ok(reportService.getReportDetail(id));
     }
 
+    @Operation(summary = "Số báo cáo đang chờ xử lý")
+    @GetMapping("/pending-count")
+    public ApiResponse<Long> pendingCount() {
+        return ApiResponse.ok(reportService.countPending());
+    }
+
     @Operation(summary = "Duyệt xử lý báo cáo vi phạm",
-            description = "Admin chấp thuận báo cáo: chuyển trạng thái báo cáo sang RESOLVED và tự động ẩn bài viết (chuyển sang HIDDEN).")
+            description = "Báo cáo đúng: gỡ bài (HIDDEN) kèm lý do hiển thị cho tác giả và đóng MỌI báo cáo đang chờ của bài.")
     @PutMapping("/{id}/resolve")
     public ApiResponse<ReportResponse> resolve(
             @Parameter(description = "ID của báo cáo vi phạm")
-            @PathVariable Long id) {
-        return ApiResponse.ok(reportService.resolve(id), "Đã xử lý vi phạm và ẩn bài viết thành công");
+            @PathVariable Long id,
+            @AuthenticationPrincipal Long adminId,
+            @Valid @RequestBody HideBlogRequest req) {
+        return ApiResponse.ok(reportService.resolve(id, adminId, req.reason()), "Đã xử lý vi phạm và gỡ bài viết");
     }
 
     @Operation(summary = "Bác bỏ báo cáo vi phạm",

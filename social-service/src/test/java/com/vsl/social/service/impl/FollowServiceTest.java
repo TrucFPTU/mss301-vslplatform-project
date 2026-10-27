@@ -1,7 +1,8 @@
 package com.vsl.social.service.impl;
 
 import com.vsl.common.exception.ErrorCode;
-import com.vsl.social.dto.FollowStatsResponse;
+import com.vsl.social.client.IdentityClient;
+import com.vsl.social.dto.FollowStatusResponse;
 import com.vsl.social.entity.NotificationType;
 import com.vsl.social.entity.UserFollow;
 import com.vsl.social.repository.UserFollowRepository;
@@ -30,6 +31,10 @@ class FollowServiceTest {
     UserFollowRepository followRepository;
     @Mock
     NotificationService notificationService;
+    @Mock
+    IdentityClient identityClient;
+    @Mock
+    SocialViews views;
     @InjectMocks
     FollowServiceImpl followService;
 
@@ -41,20 +46,28 @@ class FollowServiceTest {
 
     @Test
     void follow_new_savesAndNotifies() {
-        when(followRepository.findByFollowerIdAndFolloweeId(OTHER, AUTHOR)).thenReturn(Optional.empty());
-        when(followRepository.save(any(UserFollow.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(followRepository.existsByFollowerIdAndFolloweeId(OTHER, AUTHOR)).thenReturn(false, true);
+        when(identityClient.exists(AUTHOR)).thenReturn(true);
 
-        var res = followService.follow(AUTHOR, OTHER);
+        FollowStatusResponse res = followService.follow(AUTHOR, OTHER);
 
-        assertThat(res.followerId()).isEqualTo(OTHER);
-        assertThat(res.followeeId()).isEqualTo(AUTHOR);
+        verify(followRepository).save(any(UserFollow.class));
         verify(notificationService).notify(AUTHOR, OTHER, NotificationType.FOLLOW, null);
+        assertThat(res.followedByMe()).isTrue();
+    }
+
+    @Test
+    void follow_unknownUser_rejected() {
+        when(followRepository.existsByFollowerIdAndFolloweeId(OTHER, 404L)).thenReturn(false);
+        when(identityClient.exists(404L)).thenReturn(false);
+
+        assertAppError(() -> followService.follow(404L, OTHER), ErrorCode.USER_NOT_FOUND);
+        verify(followRepository, never()).save(any());
     }
 
     @Test
     void follow_existing_isIdempotent() {
-        UserFollow existing = UserFollow.builder().followerId(OTHER).followeeId(AUTHOR).build();
-        when(followRepository.findByFollowerIdAndFolloweeId(OTHER, AUTHOR)).thenReturn(Optional.of(existing));
+        when(followRepository.existsByFollowerIdAndFolloweeId(OTHER, AUTHOR)).thenReturn(true);
 
         followService.follow(AUTHOR, OTHER);
 
@@ -72,13 +85,24 @@ class FollowServiceTest {
     }
 
     @Test
-    void stats_guestNeverFollowing() {
+    void status_guestNeverFollowing() {
         when(followRepository.countByFolloweeId(AUTHOR)).thenReturn(3L);
         when(followRepository.countByFollowerId(AUTHOR)).thenReturn(1L);
+        when(followRepository.countFriends(AUTHOR)).thenReturn(1L);
 
-        FollowStatsResponse res = followService.stats(AUTHOR, null);
+        FollowStatusResponse res = followService.status(AUTHOR, null);
 
-        assertThat(res).isEqualTo(new FollowStatsResponse(AUTHOR, 3, 1, false));
+        assertThat(res).isEqualTo(new FollowStatusResponse(AUTHOR, false, false, false, 3, 1, 1));
         verify(followRepository, never()).existsByFollowerIdAndFolloweeId(any(), any());
+    }
+
+    @Test
+    void status_mutualFollow_isFriend() {
+        when(followRepository.existsByFollowerIdAndFolloweeId(OTHER, AUTHOR)).thenReturn(true);
+        when(followRepository.existsByFollowerIdAndFolloweeId(AUTHOR, OTHER)).thenReturn(true);
+
+        FollowStatusResponse res = followService.status(AUTHOR, OTHER);
+
+        assertThat(res.friend()).isTrue();
     }
 }

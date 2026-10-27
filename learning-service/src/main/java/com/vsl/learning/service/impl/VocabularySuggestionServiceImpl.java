@@ -12,7 +12,7 @@ import com.vsl.learning.repository.CategoryRepository;
 import com.vsl.learning.repository.VocabularyRepository;
 import com.vsl.learning.repository.VocabularySuggestionRepository;
 import com.vsl.learning.service.VocabularySuggestionService;
-import com.vsl.learning.util.VietnameseText;
+import com.vsl.common.text.VietnameseText;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;

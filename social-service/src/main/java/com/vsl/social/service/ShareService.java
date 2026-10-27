@@ -1,7 +1,13 @@
 package com.vsl.social.service;
 
+import com.vsl.social.dto.ShareRequest;
+import com.vsl.social.dto.ShareResponse;
+
 public interface ShareService {
 
-    /** Ghi nhận một lượt chia sẻ, trả về tổng số lượt chia sẻ mới. */
-    long share(Long blogId, Long userId);
+    /**
+     * Chia sẻ một bài công khai: COPY_URL (lấy link) hoặc PROFILE (lên trang của mình, hoặc của một người bạn -
+     * hai người phải theo dõi nhau). Trả tổng lượt chia sẻ mới + đường dẫn bài.
+     */
+    ShareResponse share(Long blogId, Long userId, ShareRequest request);
 }

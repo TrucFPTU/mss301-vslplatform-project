@@ -24,6 +24,11 @@ final class Paging {
         return of(page, size, Sort.Direction.ASC);
     }
 
+    /** Không kèm Sort - dùng khi thứ tự đã nằm trong câu query (vd bảng tin ưu tiên người đang theo dõi). */
+    static Pageable unsorted(int page, int size) {
+        return PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), MAX_SIZE));
+    }
+
     static <E, T> PageResponse<T> toResponse(Page<E> page, Function<E, T> mapper) {
         return PageResponse.of(page.map(mapper).getContent(), page.getNumber(), page.getSize(), page.getTotalElements());
     }
