@@ -29,6 +29,10 @@ public interface VocabularyRepository extends JpaRepository<Vocabulary, Long> {
     @EntityGraph(attributePaths = {"category"})
     Page<Vocabulary> findByCategoryId(Long categoryId, Pageable pageable);
 
+    /** Toàn bộ từ vựng (chỉ chuỗi word) - dùng để so khớp trùng bỏ dấu khi duyệt đề xuất. */
+    @Query("SELECT v.word FROM Vocabulary v")
+    List<String> findAllWords();
+
     /** Cac class AI hop le = expectedId cua nhung tu vung da co video mau. */
     @Query("SELECT DISTINCT v.expectedId FROM Vocabulary v " +
            "WHERE v.expectedId IS NOT NULL AND v.videoTutorialUrl IS NOT NULL")

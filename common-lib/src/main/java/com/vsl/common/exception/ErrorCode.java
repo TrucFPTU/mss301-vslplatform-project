@@ -22,6 +22,12 @@ public enum ErrorCode {
     INVALID_CREDENTIALS("AUTH_1003", "Sai thông tin đăng nhập", HttpStatus.UNAUTHORIZED),
     INVALID_OTP("AUTH_1004", "Mã OTP không đúng hoặc đã hết hạn", HttpStatus.BAD_REQUEST),
 
+    // ---- Learning ----
+    VOCABULARY_ALREADY_EXISTS("LEARNING_2001", "Từ vựng đã tồn tại", HttpStatus.CONFLICT),
+    VOCABULARY_SUGGESTION_NOT_FOUND("LEARNING_2002", "Không tìm thấy đề xuất từ vựng", HttpStatus.NOT_FOUND),
+    VOCABULARY_SUGGESTION_NOT_PENDING("LEARNING_2003", "Đề xuất đã được xem xét, không thể sửa/thu hồi", HttpStatus.CONFLICT),
+    VOCABULARY_SUGGESTION_ALREADY_PENDING("LEARNING_2004", "Đã có đề xuất đang chờ duyệt cho từ này", HttpStatus.CONFLICT),
+
     // ---- AI ----
     AI_MODEL_NOT_LOADED("AI_3001", "Model AI chưa sẵn sàng", HttpStatus.SERVICE_UNAVAILABLE),
     AI_INFERENCE_ERROR("AI_3002", "Lỗi khi xử lý video", HttpStatus.INTERNAL_SERVER_ERROR),
