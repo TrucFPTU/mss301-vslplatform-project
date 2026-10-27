@@ -42,8 +42,9 @@ public class User {
     @Builder.Default
     private Role role = Role.USER;
 
+    // DEFAULT 'ACTIVE': DB dev có thể đã có bảng users theo model cũ (is_active) -> thêm cột không lỗi.
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 30)
+    @Column(nullable = false, length = 30, columnDefinition = "varchar(30) default 'ACTIVE'")
     @Builder.Default
     private UserStatus status = UserStatus.ACTIVE;
 
@@ -51,7 +52,8 @@ public class User {
     private LocalDateTime lastLogin;
 
     /** Mặc định TẮT — người dùng phải tự BẬT để nhận email nhắc nhở streak. */
-    @Column(name = "email_notifications_enabled", nullable = false)
+    // columnDefinition có DEFAULT để ddl-auto=update thêm được cột vào bảng users đã có dữ liệu.
+    @Column(name = "email_notifications_enabled", nullable = false, columnDefinition = "boolean default false")
     @Builder.Default
     private boolean emailNotificationsEnabled = false;
 
