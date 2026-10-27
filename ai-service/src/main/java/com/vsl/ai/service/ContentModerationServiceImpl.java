@@ -83,8 +83,12 @@ public class ContentModerationServiceImpl implements ContentModerationService {
     @Value("${gemini.api-key:}")
     private String apiKey;
 
-    @Value("${gemini.model:gemini-2.5-flash}")
+    @Value("${gemini.model:gemini-3.5-flash-lite}")
     private String model;
+
+    /** Model dự phòng (phân tách dấu phẩy) - thử lần lượt khi model chính quá tải (429/503) hoặc không phản hồi. */
+    @Value("${gemini.fallback-models:gemini-3.1-flash-lite,gemini-2.5-flash-lite}")
+    private List<String> fallbackModels = List.of();
 
     @Value("${gemini.enabled:true}")
     private boolean enabled;
@@ -190,28 +194,43 @@ public class ContentModerationServiceImpl implements ContentModerationService {
             throw new AppException(errorCode);
         }
 
-        HttpResponse<String> response;
-        try {
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create("https://generativelanguage.googleapis.com/v1beta/models/" + model + ":generateContent"))
-                    .timeout(Duration.ofSeconds(30))
-                    .header("Content-Type", "application/json")
-                    .header("x-goog-api-key", apiKey)
-                    .POST(HttpRequest.BodyPublishers.ofString(requestBody))
-                    .build();
-            response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new AppException(errorCode);
-        } catch (Exception e) {
-            log.error("Gọi Gemini thất bại: {}", e.getMessage());
+        // Google thỉnh thoảng báo một model "quá tải" (503) / giới hạn tốc độ (429) / treo: đó là lỗi tạm thời của
+        // RIÊNG model đó, nên thử model dự phòng trước khi kết luận kiểm duyệt không khả dụng (fail-closed).
+        List<String> models = new ArrayList<>();
+        models.add(model);
+        fallbackModels.stream().map(String::trim).filter(m -> !m.isEmpty() && !models.contains(m)).forEach(models::add);
+        for (String m : models) {
+            HttpResponse<String> response;
+            try {
+                HttpRequest request = HttpRequest.newBuilder()
+                        .uri(URI.create("https://generativelanguage.googleapis.com/v1beta/models/" + m + ":generateContent"))
+                        .timeout(Duration.ofSeconds(25))
+                        .header("Content-Type", "application/json")
+                        .header("x-goog-api-key", apiKey)
+                        .POST(HttpRequest.BodyPublishers.ofString(requestBody))
+                        .build();
+                response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new AppException(errorCode);
+            } catch (Exception e) {
+                log.warn("Gọi Gemini ({}) thất bại: {} - thử model kế tiếp", m, e.getMessage());
+                continue;
+            }
+            int code = response.statusCode();
+            if (code == 200) {
+                return response.body();
+            }
+            if (code == 429 || code == 503 || code == 500 || code == 404) {
+                log.warn("Gemini ({}) trả HTTP {} - thử model kế tiếp: {}", m, code, truncate(response.body()));
+                continue;
+            }
+            // 400/401/403: lỗi cấu hình (khóa sai, request sai) - đổi model cũng không khỏi.
+            log.error("Gemini ({}) trả HTTP {}: {}", m, code, truncate(response.body()));
             throw new AppException(errorCode);
         }
-        if (response.statusCode() != 200) {
-            log.error("Gemini trả HTTP {}: {}", response.statusCode(), truncate(response.body()));
-            throw new AppException(errorCode);
-        }
-        return response.body();
+        log.error("Mọi model Gemini đều không khả dụng: {}", models);
+        throw new AppException(errorCode);
     }
 
     private JsonNode readTree(String body, ErrorCode errorCode) {

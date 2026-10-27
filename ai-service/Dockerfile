@@ -6,4 +6,5 @@ COPY target/ai-service-0.0.1-SNAPSHOT.jar app.jar
 # Model KHONG dong goi vao image (~135MB) — mount qua volume trong docker-compose:
 #   ./models  ->  /app/models
 EXPOSE 8083
-ENTRYPOINT ["java", "-jar", "app.jar"]
+# Giờ Việt Nam như monolith: streak / lịch nhắc / thống kê theo ngày tính đúng ngày của người dùng.
+ENTRYPOINT ["java", "-Duser.timezone=Asia/Ho_Chi_Minh", "-jar", "app.jar"]

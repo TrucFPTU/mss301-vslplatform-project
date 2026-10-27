@@ -44,7 +44,16 @@ public class AdminUserServiceImpl implements AdminUserService {
     @EventListener(ApplicationReadyEvent.class)
     @Transactional
     public void seedDefaultAdmin() {
-        if (!userRepository.existsByUsername("admin")) {
+        // Chỉ seed cho hệ thống CHƯA có admin nào. Trước đây chỉ kiểm tra username "admin" nên khi DB đã có
+        // admin khác dùng email admin@vsl.com (vd dữ liệu chuyển từ monolith) thì insert trùng email -> app không khởi động.
+        if (userRepository.countByRole(Role.ADMIN) > 0) {
+            return;
+        }
+        if (userRepository.existsByUsername("admin") || userRepository.existsByEmail("admin@vsl.com")) {
+            log.warn("Không seed admin mặc định: username 'admin' hoặc email 'admin@vsl.com' đã được dùng.");
+            return;
+        }
+        {
             User admin = User.builder()
                     .username("admin")
                     .email("admin@vsl.com")

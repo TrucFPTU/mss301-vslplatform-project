@@ -13,6 +13,7 @@ import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.context.request.async.AsyncRequestTimeoutException;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
@@ -105,6 +106,12 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     public ResponseEntity<ErrorResponse> handleTooLarge(MaxUploadSizeExceededException ex, HttpServletRequest req) {
         return ErrorResponses.of(ErrorCode.PAYLOAD_TOO_LARGE, null, req);
+    }
+
+    /** Xử lý bất đồng bộ quá thời gian chờ (vd suy luận AI) -> 503 "thử lại" thay vì 500. */
+    @ExceptionHandler(AsyncRequestTimeoutException.class)
+    public ResponseEntity<ErrorResponse> handleAsyncTimeout(AsyncRequestTimeoutException ex, HttpServletRequest req) {
+        return ErrorResponses.of(ErrorCode.AI_SERVICE_BUSY, "Xử lý quá thời gian chờ, vui lòng thử lại sau", req);
     }
 
     /** URL không tồn tại -> 404 (trước đây bị biến thành 500). */

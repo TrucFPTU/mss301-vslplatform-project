@@ -44,7 +44,7 @@ public class AiModerationClient {
 
     public AiModerationClient(@LoadBalanced RestClient.Builder builder,
                               @Value("${ai-service.base-url:http://ai-service}") String baseUrl,
-                              @Value("${ai-service.timeout:40s}") Duration timeout,
+                              @Value("${ai-service.timeout:90s}") Duration timeout,
                               @Value("${moderation.fail-open:false}") boolean failOpen) {
         HttpClient http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(5))
                 .version(HttpClient.Version.HTTP_1_1).build();

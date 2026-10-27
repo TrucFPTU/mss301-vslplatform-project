@@ -44,7 +44,7 @@ identity-service:
   timeout: 3s
 ai-service:
   base-url: http://ai-service
-  timeout: 40s
+  timeout: 90s   # kiểm duyệt có thể thử tới 3 model Gemini (mỗi model <= 25s)
 moderation:
   # false = FAIL-CLOSED: ai-service lỗi thì chặn đăng (như monolith). Dev không chạy ai-service: đặt true.
   fail-open: ${MODERATION_FAIL_OPEN:false}
