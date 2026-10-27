@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "Admin Vocabulary Suggestion", description = "Admin xem và xử lý đề xuất từ vựng")
 @RestController
-@RequestMapping("/api/admin/vocabulary-suggestions")
+@RequestMapping("/api/vocabulary-suggestions/admin")
 @RequiredArgsConstructor
 @PreAuthorize("hasRole('ADMIN')")
 public class AdminVocabularySuggestionController {
