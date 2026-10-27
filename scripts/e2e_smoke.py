@@ -1,6 +1,10 @@
 """Kiểm thử đầu-cuối qua API gateway (http://localhost:8080). Chạy: python -X utf8 scripts/e2e_smoke.py
 Cần stack đang chạy (docker compose up -d). Tự tạo người dùng / bài viết thử bằng tài khoản admin mặc định (dev)."""
+import base64
+import hashlib
+import hmac
 import json
+import os
 import struct
 import time
 import urllib.error
@@ -8,7 +12,17 @@ import urllib.request
 import uuid
 import zlib
 
-GW = 'http://localhost:8080'
+GW = os.environ.get('E2E_GATEWAY', 'http://localhost:8080')
+DEV_JWT_SECRET = 'dGhpcy1pcy1hLXZlcnktbG9uZy1kZXZlbG9wbWVudC1zZWNyZXQta2V5LWZvci1oczI1Ni1hbGdvcml0aG0tMTIzNDU2'
+
+
+def mint_jwt(secret, uid, name, role):
+    def b64(x):
+        return base64.urlsafe_b64encode(x).rstrip(b'=').decode()
+    now = int(time.time())
+    h = b64(json.dumps({'alg': 'HS256', 'typ': 'JWT'}).encode())
+    p = b64(json.dumps({'sub': str(uid), 'username': name, 'role': role, 'iat': now, 'exp': now + 1800}).encode())
+    return f'{h}.{p}.' + b64(hmac.new(secret, f'{h}.{p}'.encode(), hashlib.sha256).digest())
 results = []
 
 
@@ -69,9 +83,17 @@ s, b = call('GET', '/api/blogs/abc')
 check('Sai kiểu tham số -> 400 (không còn 500)', s == 400, (s, b))
 
 # ---------------- Đăng nhập + tạo người dùng thử ----------------
-s, b = call('POST', '/api/auth/login', body={'username': 'admin', 'password': 'admin123'})
-check('Admin đăng nhập', s == 200, (s, b))
-admin = data((s, b))['accessToken']
+# Admin: mặc định đăng nhập admin/admin123 (DB trống được seed). DB đã có admin (vd dữ liệu chuyển từ monolith):
+# đặt E2E_ADMIN_USER/E2E_ADMIN_PASS, hoặc E2E_ADMIN_ID để tự ký token bằng JWT_SECRET (chỉ môi trường dev).
+if os.environ.get('E2E_ADMIN_ID'):
+    secret = base64.b64decode(os.environ.get('JWT_SECRET', DEV_JWT_SECRET))
+    admin = mint_jwt(secret, int(os.environ['E2E_ADMIN_ID']), 'admin', 'ADMIN')
+    check('Token admin (tự ký, dev)', True)
+else:
+    s, b = call('POST', '/api/auth/login', body={'username': os.environ.get('E2E_ADMIN_USER', 'admin'),
+                                                  'password': os.environ.get('E2E_ADMIN_PASS', 'admin123')})
+    check('Admin đăng nhập', s == 200, (s, b))
+    admin = data((s, b))['accessToken']
 ids = {}
 tokens = {}
 for u in ['alice', 'bob']:
