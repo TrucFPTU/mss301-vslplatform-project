@@ -145,6 +145,17 @@ class CommentServiceTest {
     }
 
     @Test
+    void addComment_mentionBlogAuthor_singleMentionNotification() {
+        when(blogService.getVisibleBlog(1L, OTHER)).thenReturn(blog);
+        when(identityClient.exists(AUTHOR)).thenReturn(true);
+
+        commentService.addComment(1L, OTHER, new CommentRequest("chào tác giả", AUTHOR));
+
+        verify(notificationService).notify(AUTHOR, OTHER, NotificationType.MENTION, 1L, 10L, null);
+        verify(notificationService, never()).notify(AUTHOR, OTHER, NotificationType.COMMENT, 1L, 10L, null);
+    }
+
+    @Test
     void addComment_mentionUnknownUser_rejected() {
         when(blogService.getVisibleBlog(1L, OTHER)).thenReturn(blog);
         when(identityClient.exists(404L)).thenReturn(false);

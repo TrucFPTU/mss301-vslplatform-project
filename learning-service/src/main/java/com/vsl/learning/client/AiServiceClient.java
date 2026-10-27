@@ -177,6 +177,16 @@ public class AiServiceClient {
         if (status == 400) {
             return new AppException(ErrorCode.VALIDATION_ERROR, message != null ? message : "Video không hợp lệ");
         }
+        // Video hỏng / không đọc được frame (ai-service trả 422) là lỗi của dữ liệu gửi lên, không phải lỗi hệ thống.
+        if (status == 422) {
+            return new AppException(ErrorCode.VIDEO_CORRUPT, message != null ? message : "Video bị hỏng hoặc không đọc được");
+        }
+        if (status == 413) {
+            return new AppException(ErrorCode.PAYLOAD_TOO_LARGE, message);
+        }
+        if (status == 403 || status == 401) {
+            return new AppException(status == 403 ? ErrorCode.FORBIDDEN : ErrorCode.UNAUTHENTICATED, message);
+        }
         if (status == 503) {
             return new AppException(ErrorCode.AI_MODEL_NOT_LOADED, message != null ? message : "Model AI chưa sẵn sàng");
         }

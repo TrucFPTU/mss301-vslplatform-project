@@ -69,8 +69,11 @@ public class CommentServiceImpl implements CommentService {
                 .content(content)
                 .mentionedUserId(mentioned)
                 .build());
-        notificationService.notify(blog.getAuthorId(), userId, NotificationType.COMMENT, blogId, saved.getId(), null);
-        if (mentioned != null && !Objects.equals(mentioned, blog.getAuthorId())) {
+        // Tác giả bị nhắc tên -> chỉ 1 thông báo, loại MENTION (cụ thể hơn COMMENT).
+        boolean authorMentioned = Objects.equals(mentioned, blog.getAuthorId());
+        notificationService.notify(blog.getAuthorId(), userId,
+                authorMentioned ? NotificationType.MENTION : NotificationType.COMMENT, blogId, saved.getId(), null);
+        if (mentioned != null && !authorMentioned) {
             notificationService.notify(mentioned, userId, NotificationType.MENTION, blogId, saved.getId(), null);
         }
         blogRepository.addCommentCount(blogId, 1);
@@ -121,8 +124,10 @@ public class CommentServiceImpl implements CommentService {
                 .mentionedUserId(mentioned)
                 .build());
         Long blogId = comment.getBlog().getId();
-        notificationService.notify(comment.getUserId(), userId, NotificationType.REPLY, blogId, commentId, saved.getId());
-        if (mentioned != null && !Objects.equals(mentioned, comment.getUserId())) {
+        boolean ownerMentioned = Objects.equals(mentioned, comment.getUserId());
+        notificationService.notify(comment.getUserId(), userId,
+                ownerMentioned ? NotificationType.MENTION : NotificationType.REPLY, blogId, commentId, saved.getId());
+        if (mentioned != null && !ownerMentioned) {
             notificationService.notify(mentioned, userId, NotificationType.MENTION, blogId, commentId, saved.getId());
         }
         return views.replies(List.of(saved), userId).get(0);
