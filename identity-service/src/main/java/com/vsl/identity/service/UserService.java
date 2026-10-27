@@ -4,6 +4,8 @@ import com.vsl.common.response.PageResponse;
 import com.vsl.identity.dto.ChangePasswordRequest;
 import com.vsl.identity.dto.UserSummaryResponse;
 
+import org.springframework.web.multipart.MultipartFile;
+
 import java.util.Collection;
 import java.util.List;
 import com.vsl.identity.dto.PublicUserStatsResponse;
@@ -26,6 +28,14 @@ public interface UserService {
 
     /** Tìm người dùng đang hoạt động theo họ tên / username. */
     PageResponse<UserSummaryResponse> searchUsers(String keyword, int page, int size);
+
+    /** Upload avatar (JPEG/PNG/WEBP/GIF, 5MB) lên MinIO; xóa ảnh cũ. */
+    UserDto uploadAvatar(Long userId, MultipartFile image);
+
+    UserDto removeAvatar(Long userId);
+
+    /** Tự xóa tài khoản: xác nhận mật khẩu, ẩn danh hóa, thu hồi mọi phiên đăng nhập. */
+    void deleteMyAccount(Long userId, String password);
 
     /** Bật/tắt email nhắc nhở streak của chính người dùng. */
     UserDto updateNotificationSettings(Long userId, boolean emailNotificationsEnabled);

@@ -218,17 +218,4 @@ class AdminUserControllerTest {
 
         verify(adminUserService).updateUserRole(eq(1L), any(UserRoleUpdateRequest.class));
     }
-
-    @Test
-    @DisplayName("GET /api/admin/users -> alias route hoạt động tốt")
-    void aliasRoute_WorksProperly() throws Exception {
-        PageResponse<AdminUserResponse> pageResponse = PageResponse.of(List.of(), 0, 10, 0);
-
-        when(adminUserService.getUsers(any(), any(), any(), eq(0), eq(10))).thenReturn(pageResponse);
-
-        mockMvc.perform(get("/api/admin/users")
-                        .contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value("SUCCESS"));
-    }
 }

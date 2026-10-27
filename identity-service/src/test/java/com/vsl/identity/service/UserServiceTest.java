@@ -33,6 +33,12 @@ class UserServiceTest {
     @Mock
     private PasswordEncoder passwordEncoder;
 
+    @Mock
+    private RefreshTokenService refreshTokenService;
+
+    @Mock
+    private org.springframework.beans.factory.ObjectProvider<com.vsl.common.storage.StorageService> storage;
+
     @InjectMocks
     private UserServiceImpl userService;
 
@@ -80,14 +86,12 @@ class UserServiceTest {
         UpdateProfileRequest request = UpdateProfileRequest.builder()
                 .fullName("New Full Name")
                 .bio("My bio")
-                .avatarUrl("http://example.com/avatar.png")
                 .build();
 
         UserDto updated = userService.updateProfile(1L, request);
 
         assertEquals("New Full Name", updated.getFullName());
         assertEquals("My bio", updated.getBio());
-        assertEquals("http://example.com/avatar.png", updated.getAvatarUrl());
     }
 
     @Test
@@ -120,5 +124,41 @@ class UserServiceTest {
 
         assertThrows(AppException.class, () -> userService.changePassword(1L, request));
         verify(userRepository, never()).save(any(User.class));
+    }
+
+    @Test
+    @DisplayName("Tự xóa tài khoản sai mật khẩu -> không xóa")
+    void deleteMyAccount_WrongPassword() {
+        when(userRepository.findById(1L)).thenReturn(Optional.of(sampleUser));
+        when(passwordEncoder.matches("wrong", "hashed_password")).thenReturn(false);
+
+        assertThrows(AppException.class, () -> userService.deleteMyAccount(1L, "wrong"));
+        assertEquals(UserStatus.ACTIVE, sampleUser.getStatus());
+        verify(refreshTokenService, never()).revokeAll(any());
+    }
+
+    @Test
+    @DisplayName("Tự xóa tài khoản: ẩn danh hóa, giải phóng email, thu hồi mọi phiên")
+    void deleteMyAccount_AnonymizesAndRevokes() {
+        when(userRepository.findById(1L)).thenReturn(Optional.of(sampleUser));
+        when(passwordEncoder.matches("pass", "hashed_password")).thenReturn(true);
+
+        userService.deleteMyAccount(1L, "pass");
+
+        assertEquals(UserStatus.DELETED, sampleUser.getStatus());
+        assertEquals("deleted+1@deleted.local", sampleUser.getEmail());
+        assertEquals("Người dùng đã xóa", sampleUser.getFullName());
+        assertFalse(sampleUser.isActive());
+        verify(refreshTokenService).revokeAll(1L);
+    }
+
+    @Test
+    @DisplayName("Upload avatar không phải ảnh -> lỗi, không lưu")
+    void uploadAvatar_RejectsNonImage() {
+        when(userRepository.findById(1L)).thenReturn(Optional.of(sampleUser));
+
+        assertThrows(AppException.class, () -> userService.uploadAvatar(1L,
+                new org.springframework.mock.web.MockMultipartFile("image", "a.svg", "image/svg+xml", new byte[]{1})));
+        verify(userRepository, never()).save(any());
     }
 }

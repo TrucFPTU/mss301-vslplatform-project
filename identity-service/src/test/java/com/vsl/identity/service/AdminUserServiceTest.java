@@ -28,6 +28,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
+import static org.mockito.Mockito.never;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -42,6 +43,9 @@ class AdminUserServiceTest {
 
     @Mock
     private PasswordEncoder passwordEncoder;
+
+    @Mock
+    private RefreshTokenService refreshTokenService;
 
     @InjectMocks
     private AdminUserServiceImpl adminUserService;
@@ -211,5 +215,62 @@ class AdminUserServiceTest {
         assertThat(stats.pendingUsers()).isEqualTo(2L);
         assertThat(stats.adminUsers()).isEqualTo(5L);
         assertThat(stats.regularUsers()).isEqualTo(45L);
+    }
+
+    @Test
+    @DisplayName("Khóa user -> thu hồi mọi refresh token")
+    void updateUserStatus_Ban_RevokesTokens() {
+        when(userRepository.findById(1L)).thenReturn(Optional.of(sampleUser));
+        when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+        UserStatusUpdateRequest req = UserStatusUpdateRequest.builder().status(UserStatus.BANNED).reason("spam").build();
+
+        adminUserService.updateUserStatus(1L, req);
+
+        verify(refreshTokenService).revokeAll(1L);
+    }
+
+    @Test
+    @DisplayName("Không đặt DELETED qua API đổi trạng thái")
+    void updateUserStatus_DeletedRejected() {
+        when(userRepository.findById(1L)).thenReturn(Optional.of(sampleUser));
+        UserStatusUpdateRequest req = UserStatusUpdateRequest.builder().status(UserStatus.DELETED).build();
+
+        assertThatThrownBy(() -> adminUserService.updateUserStatus(1L, req)).isInstanceOf(AppException.class);
+    }
+
+    @Test
+    @DisplayName("Không hạ quyền admin cuối cùng")
+    void updateUserRole_LastAdminRejected() {
+        sampleUser.setRole(Role.ADMIN);
+        when(userRepository.findById(1L)).thenReturn(Optional.of(sampleUser));
+        when(userRepository.countByRoleAndStatusAndUserIdNot(Role.ADMIN, UserStatus.ACTIVE, 1L)).thenReturn(0L);
+        UserRoleUpdateRequest req = UserRoleUpdateRequest.builder().role(Role.USER).build();
+
+        assertThatThrownBy(() -> adminUserService.updateUserRole(1L, req)).isInstanceOf(AppException.class);
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("Admin không tự xóa chính mình")
+    void deleteUser_SelfRejected() {
+        when(userRepository.findById(1L)).thenReturn(Optional.of(sampleUser));
+        org.springframework.security.core.context.SecurityContextHolder.getContext().setAuthentication(
+                new org.springframework.security.authentication.UsernamePasswordAuthenticationToken(1L, null, java.util.List.of()));
+        try {
+            assertThatThrownBy(() -> adminUserService.deleteUser(1L)).isInstanceOf(AppException.class);
+        } finally {
+            org.springframework.security.core.context.SecurityContextHolder.clearContext();
+        }
+    }
+
+    @Test
+    @DisplayName("Xóa user -> ẩn danh hóa + thu hồi token")
+    void deleteUser_Anonymizes() {
+        when(userRepository.findById(1L)).thenReturn(Optional.of(sampleUser));
+
+        adminUserService.deleteUser(1L);
+
+        assertThat(sampleUser.getStatus()).isEqualTo(UserStatus.DELETED);
+        verify(refreshTokenService).revokeAll(1L);
     }
 }

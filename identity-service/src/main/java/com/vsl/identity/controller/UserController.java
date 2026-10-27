@@ -3,6 +3,7 @@ package com.vsl.identity.controller;
 import com.vsl.common.response.ApiResponse;
 import com.vsl.common.response.PageResponse;
 import com.vsl.identity.dto.ChangePasswordRequest;
+import com.vsl.identity.dto.DeleteAccountRequest;
 import com.vsl.identity.dto.PublicUserStatsResponse;
 import com.vsl.identity.dto.UpdateProfileRequest;
 import com.vsl.identity.dto.UserDto;
@@ -12,8 +13,10 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -46,6 +49,27 @@ public class UserController {
             @Valid @RequestBody ChangePasswordRequest request) {
         userService.changePassword(userId, request);
         return ApiResponse.ok("Đổi mật khẩu thành công");
+    }
+
+    @PostMapping(value = "/me/avatar", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "Tải avatar", description = "JPEG/PNG/WEBP/GIF, tối đa 5MB; thay ảnh cũ")
+    public ApiResponse<UserDto> uploadAvatar(@AuthenticationPrincipal Long userId,
+                                             @RequestPart("image") MultipartFile image) {
+        return ApiResponse.ok(userService.uploadAvatar(userId, image), "Đã cập nhật avatar");
+    }
+
+    @DeleteMapping("/me/avatar")
+    @Operation(summary = "Xóa avatar")
+    public ApiResponse<UserDto> removeAvatar(@AuthenticationPrincipal Long userId) {
+        return ApiResponse.ok(userService.removeAvatar(userId), "Đã xóa avatar");
+    }
+
+    @DeleteMapping("/me")
+    @Operation(summary = "Xóa tài khoản của tôi", description = "Xác nhận bằng mật khẩu; tài khoản bị ẩn danh hóa, đăng xuất mọi thiết bị")
+    public ApiResponse<Void> deleteMyAccount(@AuthenticationPrincipal Long userId,
+                                             @Valid @RequestBody DeleteAccountRequest request) {
+        userService.deleteMyAccount(userId, request.password());
+        return ApiResponse.ok("Đã xóa tài khoản");
     }
 
     @PatchMapping("/me/notifications")

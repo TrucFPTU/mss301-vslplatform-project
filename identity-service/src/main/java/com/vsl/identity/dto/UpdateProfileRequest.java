@@ -18,6 +18,4 @@ public class UpdateProfileRequest {
     @Size(max = 500, message = "Tiểu sử tối đa 500 ký tự")
     private String bio;
 
-    @Size(max = 1024, message = "Đường dẫn ảnh đại diện tối đa 1024 ký tự")
-    private String avatarUrl;
 }

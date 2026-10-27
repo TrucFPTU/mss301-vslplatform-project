@@ -70,6 +70,20 @@ public class User {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    /**
+     * Xóa mềm + ẩn danh hóa: giữ userId (bài viết / lịch sử ở service khác vẫn tham chiếu được) nhưng bỏ
+     * thông tin cá nhân; đổi email/username để người đó có thể đăng ký lại.
+     */
+    public void anonymize() {
+        this.status = UserStatus.DELETED;
+        this.fullName = "Người dùng đã xóa";
+        this.username = "deleted_" + userId;
+        this.email = "deleted+" + userId + "@deleted.local";
+        this.avatarUrl = null;
+        this.bio = null;
+        this.emailNotificationsEnabled = false;
+    }
+
     /** Tài khoản còn hoạt động = trạng thái ACTIVE. Nguồn sự thật là {@link #status}. */
     public boolean isActive() {
         return status == UserStatus.ACTIVE;

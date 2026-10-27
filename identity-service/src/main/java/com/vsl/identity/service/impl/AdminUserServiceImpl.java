@@ -13,6 +13,7 @@ import com.vsl.identity.entity.User;
 import com.vsl.identity.entity.UserStatus;
 import com.vsl.identity.repository.UserRepository;
 import com.vsl.identity.service.AdminUserService;
+import com.vsl.identity.service.RefreshTokenService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -21,6 +22,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,6 +38,7 @@ public class AdminUserServiceImpl implements AdminUserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final RefreshTokenService refreshTokenService;
 
     /** Seed tài khoản Admin mặc định khi ứng dụng khởi chạy nếu chưa có tài khoản Admin nào */
     @EventListener(ApplicationReadyEvent.class)
@@ -84,8 +88,20 @@ public class AdminUserServiceImpl implements AdminUserService {
     @Transactional
     public AdminUserResponse updateUserStatus(Long id, UserStatusUpdateRequest request) {
         User user = getUserOrThrow(id);
+        requireNotSelf(id, "Không thể tự đổi trạng thái tài khoản của chính mình");
+        requireNotDeleted(user);
+        if (request.getStatus() == UserStatus.DELETED) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, "Dùng chức năng xóa tài khoản để xóa người dùng");
+        }
+        if (user.getRole() == Role.ADMIN && request.getStatus() != UserStatus.ACTIVE) {
+            requireAnotherActiveAdmin(id);
+        }
         UserStatus oldStatus = user.getStatus();
         user.setStatus(request.getStatus());
+        if (request.getStatus() != UserStatus.ACTIVE) {
+            // Khóa tài khoản -> đăng xuất mọi thiết bị (refresh token không gia hạn được nữa).
+            refreshTokenService.revokeAll(id);
+        }
 
         User updated = userRepository.save(user);
         log.info("Admin changed user status: userId={} oldStatus={} newStatus={} reason={}",
@@ -97,6 +113,11 @@ public class AdminUserServiceImpl implements AdminUserService {
     @Transactional
     public AdminUserResponse updateUserRole(Long id, UserRoleUpdateRequest request) {
         User user = getUserOrThrow(id);
+        requireNotSelf(id, "Không thể tự đổi quyền của chính mình");
+        requireNotDeleted(user);
+        if (user.getRole() == Role.ADMIN && request.getRole() != Role.ADMIN) {
+            requireAnotherActiveAdmin(id);
+        }
         Role oldRole = user.getRole();
         user.setRole(request.getRole());
 
@@ -153,6 +174,42 @@ public class AdminUserServiceImpl implements AdminUserService {
                 .adminUsers(adminUsers)
                 .regularUsers(regularUsers)
                 .build();
+    }
+
+    @Override
+    @Transactional
+    public void deleteUser(Long id) {
+        User user = getUserOrThrow(id);
+        requireNotSelf(id, "Không thể tự xóa tài khoản admin của chính mình");
+        requireNotDeleted(user);
+        if (user.getRole() == Role.ADMIN) {
+            requireAnotherActiveAdmin(id);
+        }
+        user.anonymize();
+        userRepository.save(user);
+        refreshTokenService.revokeAll(id);
+        log.info("Admin xóa tài khoản userId={}", id);
+    }
+
+    /** Không cho admin tự khóa / hạ quyền / xóa chính mình (dễ tự khóa mất quyền quản trị). */
+    private void requireNotSelf(Long targetId, String message) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getPrincipal() instanceof Long actorId && actorId.equals(targetId)) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, message);
+        }
+    }
+
+    private void requireNotDeleted(User user) {
+        if (user.getStatus() == UserStatus.DELETED) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, "Tài khoản đã bị xóa");
+        }
+    }
+
+    /** Luôn giữ ít nhất một admin đang hoạt động. */
+    private void requireAnotherActiveAdmin(Long excludeId) {
+        if (userRepository.countByRoleAndStatusAndUserIdNot(Role.ADMIN, UserStatus.ACTIVE, excludeId) == 0) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, "Hệ thống phải còn ít nhất một admin đang hoạt động");
+        }
     }
 
     private User getUserOrThrow(Long id) {

@@ -21,7 +21,7 @@ import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "Admin User Management", description = "API Quản trị Tài khoản Người dùng (Dành cho ADMIN)")
 @RestController
-@RequestMapping({"/api/users/admin", "/api/admin/users"})
+@RequestMapping("/api/users/admin")
 @RequiredArgsConstructor
 @PreAuthorize("hasRole('ADMIN')")
 public class AdminUserController {
@@ -89,5 +89,12 @@ public class AdminUserController {
             @PathVariable Long id,
             @Valid @RequestBody UserRoleUpdateRequest request) {
         return ApiResponse.ok(adminUserService.updateUserRole(id, request), "Cập nhật quyền người dùng thành công");
+    }
+
+    @DeleteMapping("/{id}")
+    @Operation(summary = "Xóa tài khoản người dùng", description = "Ẩn danh hóa + đăng xuất mọi thiết bị; không xóa được chính mình / admin cuối cùng")
+    public ApiResponse<Void> deleteUser(@PathVariable Long id) {
+        adminUserService.deleteUser(id);
+        return ApiResponse.ok("Đã xóa tài khoản người dùng");
     }
 }

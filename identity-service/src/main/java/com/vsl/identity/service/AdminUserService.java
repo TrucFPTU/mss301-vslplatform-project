@@ -22,4 +22,7 @@ public interface AdminUserService {
     AdminUserResponse createUser(AdminCreateUserRequest request);
 
     UserStatisticsResponse getUserStatistics();
+
+    /** Xóa (ẩn danh hóa) tài khoản. Không xóa được chính mình. */
+    void deleteUser(Long id);
 }
