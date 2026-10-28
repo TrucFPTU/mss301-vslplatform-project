@@ -255,7 +255,7 @@ public class BlogServiceImpl implements BlogService {
     @Transactional(readOnly = true)
     public PageResponse<BlogResponse> listForAdmin(Long adminId, BlogStatus status, String keyword, int page, int size) {
         AccessControl.requireAdmin();
-        String term = StringUtils.hasText(keyword) ? keyword.trim() : null;
+        String term = StringUtils.hasText(keyword) ? keyword.trim() : "";
         return views.blogPage(blogRepository.findForAdmin(adminId, status, term, Paging.newestFirst(page, size)), adminId);
     }
 

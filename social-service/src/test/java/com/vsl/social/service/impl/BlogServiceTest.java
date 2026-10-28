@@ -476,13 +476,14 @@ class BlogServiceTest {
         }
 
         @Test
-        void listForAdmin_passesNullKeywordWhenBlank() {
+        void listForAdmin_passesEmptyKeywordWhenBlank() {
+            // null keyword makes Postgres type the parameter as bytea -> lower(bytea) error.
             loginAs(ADMIN, "ADMIN");
-            when(blogRepository.findForAdmin(eq(ADMIN), isNull(), isNull(), any(Pageable.class))).thenReturn(Page.empty());
+            when(blogRepository.findForAdmin(eq(ADMIN), isNull(), eq(""), any(Pageable.class))).thenReturn(Page.empty());
 
             blogService.listForAdmin(ADMIN, null, "  ", 0, 10);
 
-            verify(blogRepository).findForAdmin(eq(ADMIN), isNull(), isNull(), any(Pageable.class));
+            verify(blogRepository).findForAdmin(eq(ADMIN), isNull(), eq(""), any(Pageable.class));
         }
     }
 }

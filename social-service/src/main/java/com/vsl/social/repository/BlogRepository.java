@@ -87,11 +87,12 @@ public interface BlogRepository extends JpaRepository<Blog, Long> {
 
     /**
      * Danh sách cho admin: mọi bài KHÔNG phải nháp + nháp của chính admin (không xem nháp người khác).
-     * status / keyword: lọc tùy chọn.
+     * status: lọc tùy chọn. keyword: KHÔNG được null — chuỗi rỗng = không lọc (null bị Postgres suy kiểu
+     * bytea -> "function lower(bytea) does not exist" -> 500).
      */
     @Query("SELECT b FROM Blog b WHERE (b.status <> com.vsl.social.entity.BlogStatus.DRAFT OR b.authorId = :adminId) "
             + "AND (:status IS NULL OR b.status = :status) "
-            + "AND (:keyword IS NULL OR LOWER(b.title) LIKE LOWER(CONCAT('%', :keyword, '%')))")
+            + "AND LOWER(b.title) LIKE LOWER(CONCAT('%', :keyword, '%'))")
     Page<Blog> findForAdmin(@Param("adminId") Long adminId, @Param("status") BlogStatus status,
                             @Param("keyword") String keyword, Pageable pageable);
 
