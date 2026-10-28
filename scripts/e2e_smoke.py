@@ -120,6 +120,13 @@ if avatar:
     check('Avatar xem được trên MinIO', st == 200, (st, avatar))
 s, b = call('POST', '/api/users/me/avatar', A, files={'image': ('x.html', 'text/html', b'<script>')})
 check('Upload HTML làm avatar bị từ chối', s == 400, (s, b))
+s, b = call('PUT', '/api/users/me/avatar', A, {'avatarUrl': 'https://example.com/avatar.png'})
+check('Đặt avatar bằng URL', s == 200 and (data((s, b)) or {}).get('avatarUrl') == 'https://example.com/avatar.png', (s, b))
+if avatar:
+    st, _ = call('GET', '', base=avatar)
+    check('Ảnh avatar cũ trên MinIO bị xóa khi đổi sang URL', st == 404, (st, avatar))
+s, b = call('PUT', '/api/users/me/avatar', A, {'avatarUrl': 'javascript:alert(1)'})
+check('Avatar URL không phải http(s) bị từ chối', s == 400, (s, b))
 
 # ---------------- Blog ----------------
 title = f'Học bảng chữ cái ký hiệu {tag}'

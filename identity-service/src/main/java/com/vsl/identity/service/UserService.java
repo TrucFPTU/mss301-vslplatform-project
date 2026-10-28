@@ -32,6 +32,9 @@ public interface UserService {
     /** Upload avatar (JPEG/PNG/WEBP/GIF, 5MB) lên MinIO; xóa ảnh cũ. */
     UserDto uploadAvatar(Long userId, MultipartFile image);
 
+    /** Đặt avatar bằng URL ảnh bên ngoài; ảnh cũ trên MinIO (nếu có) bị xóa sau commit. */
+    UserDto setAvatarUrl(Long userId, String avatarUrl);
+
     UserDto removeAvatar(Long userId);
 
     /** Tự xóa tài khoản: xác nhận mật khẩu, ẩn danh hóa, thu hồi mọi phiên đăng nhập. */

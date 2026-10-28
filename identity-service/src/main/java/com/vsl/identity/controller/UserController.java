@@ -5,6 +5,7 @@ import com.vsl.common.response.PageResponse;
 import com.vsl.identity.dto.ChangePasswordRequest;
 import com.vsl.identity.dto.DeleteAccountRequest;
 import com.vsl.identity.dto.PublicUserStatsResponse;
+import com.vsl.identity.dto.UpdateAvatarUrlRequest;
 import com.vsl.identity.dto.UpdateProfileRequest;
 import com.vsl.identity.dto.UserDto;
 import com.vsl.identity.dto.UserSummaryResponse;
@@ -56,6 +57,13 @@ public class UserController {
     public ApiResponse<UserDto> uploadAvatar(@AuthenticationPrincipal Long userId,
                                              @RequestPart("image") MultipartFile image) {
         return ApiResponse.ok(userService.uploadAvatar(userId, image), "Đã cập nhật avatar");
+    }
+
+    @PutMapping(value = "/me/avatar", consumes = MediaType.APPLICATION_JSON_VALUE)
+    @Operation(summary = "Đặt avatar bằng URL", description = "Dùng ảnh có sẵn trên mạng (http/https); ảnh cũ đã tải lên bị xóa")
+    public ApiResponse<UserDto> setAvatarUrl(@AuthenticationPrincipal Long userId,
+                                             @Valid @RequestBody UpdateAvatarUrlRequest request) {
+        return ApiResponse.ok(userService.setAvatarUrl(userId, request.avatarUrl()), "Đã cập nhật avatar");
     }
 
     @DeleteMapping("/me/avatar")

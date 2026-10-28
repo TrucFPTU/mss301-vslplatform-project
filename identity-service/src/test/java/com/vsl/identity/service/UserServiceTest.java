@@ -161,4 +161,31 @@ class UserServiceTest {
                 new org.springframework.mock.web.MockMultipartFile("image", "a.svg", "image/svg+xml", new byte[]{1})));
         verify(userRepository, never()).save(any());
     }
+
+    @Test
+    @DisplayName("Đặt avatar bằng URL: lưu URL mới, xóa ảnh cũ trên MinIO")
+    void setAvatarUrl_SavesUrlAndDeletesOldUpload() {
+        com.vsl.common.storage.StorageService minio = mock(com.vsl.common.storage.StorageService.class);
+        sampleUser.setAvatarUrl("http://localhost:9000/avatars/user-1-old.png");
+        when(userRepository.findById(1L)).thenReturn(Optional.of(sampleUser));
+        when(userRepository.save(any(User.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(storage.getIfAvailable()).thenReturn(minio);
+
+        UserDto dto = userService.setAvatarUrl(1L, "  https://example.com/me.png ");
+
+        assertEquals("https://example.com/me.png", dto.getAvatarUrl());
+        verify(minio).deleteByUrl("avatars", "http://localhost:9000/avatars/user-1-old.png");
+    }
+
+    @Test
+    @DisplayName("Đặt lại đúng URL đang dùng -> không lưu, không xóa gì")
+    void setAvatarUrl_SameUrlIsNoop() {
+        sampleUser.setAvatarUrl("https://example.com/me.png");
+        when(userRepository.findById(1L)).thenReturn(Optional.of(sampleUser));
+
+        userService.setAvatarUrl(1L, "https://example.com/me.png");
+
+        verify(userRepository, never()).save(any());
+        verify(storage, never()).getIfAvailable();
+    }
 }

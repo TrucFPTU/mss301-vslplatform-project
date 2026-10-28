@@ -76,6 +76,21 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
+    public UserDto setAvatarUrl(Long userId, String avatarUrl) {
+        User user = findUserById(userId);
+        String url = avatarUrl.trim();
+        String old = user.getAvatarUrl();
+        if (url.equals(old)) {
+            return mapToDto(user);
+        }
+        user.setAvatarUrl(url);
+        UserDto dto = mapToDto(userRepository.save(user));
+        deleteAvatarAfterCommit(old);
+        return dto;
+    }
+
+    @Override
+    @Transactional
     public UserDto removeAvatar(Long userId) {
         User user = findUserById(userId);
         String old = user.getAvatarUrl();

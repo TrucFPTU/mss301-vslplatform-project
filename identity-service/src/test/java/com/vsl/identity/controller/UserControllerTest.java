@@ -163,4 +163,27 @@ class UserControllerTest {
                 .andExpect(jsonPath("$.data.length()").value(2))
                 .andExpect(jsonPath("$.data[1].fullName").value("B"));
     }
+
+    @Test
+    @DisplayName("API PUT /api/users/me/avatar (URL) thành công")
+    void setAvatarUrl_Success() throws Exception {
+        UserDto userDto = UserDto.builder().userId(1L).username("testuser").avatarUrl("https://example.com/me.png").role(Role.USER).build();
+        when(userService.setAvatarUrl(1L, "https://example.com/me.png")).thenReturn(userDto);
+
+        mockMvc.perform(put("/api/users/me/avatar")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"avatarUrl\":\"https://example.com/me.png\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.avatarUrl").value("https://example.com/me.png"));
+    }
+
+    @Test
+    @DisplayName("API PUT /api/users/me/avatar: URL không phải http(s) -> 400")
+    void setAvatarUrl_RejectsNonHttpUrl() throws Exception {
+        mockMvc.perform(put("/api/users/me/avatar")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"avatarUrl\":\"javascript:alert(1)\"}"))
+                .andExpect(status().isBadRequest());
+        verify(userService, never()).setAvatarUrl(any(), any());
+    }
 }
