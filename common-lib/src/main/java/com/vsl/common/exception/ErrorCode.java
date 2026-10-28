@@ -34,7 +34,6 @@ public enum ErrorCode {
     VOCABULARY_SUGGESTION_NOT_FOUND("LEARNING_2002", "Không tìm thấy đề xuất từ vựng", HttpStatus.NOT_FOUND),
     VOCABULARY_SUGGESTION_NOT_PENDING("LEARNING_2003", "Đề xuất đã được xem xét, không thể sửa/thu hồi", HttpStatus.CONFLICT),
     VOCABULARY_SUGGESTION_ALREADY_PENDING("LEARNING_2004", "Đã có đề xuất đang chờ duyệt cho từ này", HttpStatus.CONFLICT),
-    VOCABULARY_EXPECTED_ID_TAKEN("LEARNING_2005", "expectedId (class AI) đã được gán cho một từ khác", HttpStatus.CONFLICT),
     CATEGORY_NAME_TAKEN("LEARNING_2006", "Tên danh mục đã tồn tại", HttpStatus.CONFLICT),
 
     // ---- AI ----

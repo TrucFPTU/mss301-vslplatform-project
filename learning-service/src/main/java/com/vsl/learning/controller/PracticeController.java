@@ -27,15 +27,18 @@ public class PracticeController {
     private final AchievementService achievementService;
 
     @Operation(summary = "Nộp video luyện tập để AI chấm điểm",
-            description = "learning-service gọi ai-service chấm điểm rồi lưu lịch sử, tiến trình, thành tựu.")
+            description = "learning-service gọi ai-service chấm điểm rồi lưu lịch sử, tiến trình, thành tựu. "
+                    + "Nên gửi vocabularyId: nhiều từ có thể chung một ký hiệu (cùng class AI), chỉ gửi "
+                    + "expectedId thì kết quả được ghi vào từ đầu tiên mang class đó.")
     @PostMapping(value = "/evaluate", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ApiResponse<EvaluationResponse> evaluate(
             @AuthenticationPrincipal Long userId,
             @RequestPart("video") MultipartFile video,
-            @RequestParam("expectedId") int expectedId,
+            @RequestParam(value = "vocabularyId", required = false) Long vocabularyId,
+            @RequestParam(value = "expectedId", required = false) Integer expectedId,
             @RequestParam(value = "startFrac", defaultValue = "0.0") float startFrac,
             @RequestParam(value = "endFrac", defaultValue = "1.0") float endFrac) {
-        return ApiResponse.ok(practiceService.evaluate(userId, video, expectedId, startFrac, endFrac),
+        return ApiResponse.ok(practiceService.evaluate(userId, video, vocabularyId, expectedId, startFrac, endFrac),
                 "Đánh giá hoàn tất");
     }
 

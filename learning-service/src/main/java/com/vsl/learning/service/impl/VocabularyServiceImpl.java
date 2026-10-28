@@ -32,8 +32,8 @@ import java.util.Optional;
 
 /**
  * Từ vựng (bê đủ từ VocabularyServiceImpl monolith: kiểm tra từ, từ đồng nghĩa AI, upload ảnh/video).
- * Sửa so với bản cũ: admin tạo/sửa cũng bị chặn trùng từ (bỏ dấu) như luồng đề xuất; expectedId 0-999 và
- * không trùng (2 từ cùng class AI thì chấm điểm không phân biệt được); thay video thì xóa video cũ.
+ * Sửa so với bản cũ: admin tạo/sửa cũng bị chặn trùng từ (bỏ dấu) như luồng đề xuất; expectedId 0-999
+ * (được trùng: một ký hiệu có thể mang nhiều nghĩa, chấm điểm theo vocabularyId); thay video thì xóa video cũ.
  */
 @Slf4j
 @Service
@@ -161,7 +161,7 @@ public class VocabularyServiceImpl implements VocabularyService {
         Vocabulary vocabulary = getVocabularyOrThrow(id);
         UploadValidator.requireVideo(video);
         if (expectedId != null) {
-            requireFreeExpectedId(expectedId, id);
+            requireValidExpectedId(expectedId);
         }
         byte[] mp4 = aiServiceClient.transcode(video);
         String url = mediaStorage.uploadMp4(MediaStorage.TUTORIAL_BUCKET, "vocabulary-" + id, mp4);
@@ -188,7 +188,7 @@ public class VocabularyServiceImpl implements VocabularyService {
             throw new AppException(ErrorCode.VOCABULARY_ALREADY_EXISTS);
         }
         if (request.getExpectedId() != null) {
-            requireFreeExpectedId(request.getExpectedId(), selfId);
+            requireValidExpectedId(request.getExpectedId());
         }
         vocabulary.setCategory(category);
         vocabulary.setWord(word);
@@ -196,15 +196,9 @@ public class VocabularyServiceImpl implements VocabularyService {
         vocabulary.setExpectedId(request.getExpectedId());
     }
 
-    private void requireFreeExpectedId(Integer expectedId, Long selfId) {
+    private static void requireValidExpectedId(Integer expectedId) {
         if (expectedId < 0 || expectedId > 999) {
             throw new AppException(ErrorCode.VALIDATION_ERROR, "expectedId phải trong khoảng 0-999");
-        }
-        boolean taken = selfId == null
-                ? vocabularyRepository.existsByExpectedId(expectedId)
-                : vocabularyRepository.existsByExpectedIdAndIdNot(expectedId, selfId);
-        if (taken) {
-            throw new AppException(ErrorCode.VOCABULARY_EXPECTED_ID_TAKEN);
         }
     }
 

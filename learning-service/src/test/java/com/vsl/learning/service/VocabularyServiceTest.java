@@ -101,7 +101,6 @@ class VocabularyServiceTest {
     @Test
     void update_sameWordOnItself_allowed() {
         when(vocabularyRepository.findWithCategoryById(5L)).thenReturn(Optional.of(vocab(5L, "con chuột", 7)));
-        when(vocabularyRepository.existsByExpectedIdAndIdNot(7, 5L)).thenReturn(false);
 
         VocabularyResponse res = service.update(5L, request("con chuột", 7));
 
@@ -109,10 +108,16 @@ class VocabularyServiceTest {
     }
 
     @Test
-    void create_expectedIdTaken_rejected() {
-        when(vocabularyRepository.existsByExpectedId(7)).thenReturn(true);
+    void create_sharedExpectedId_allowed() {
+        // Một ký hiệu có thể mang nhiều nghĩa -> hai từ được chung class AI.
+        VocabularyResponse res = service.create(request("con mèo", 7));
 
-        assertThat(code(() -> service.create(request("con mèo", 7)))).isEqualTo(ErrorCode.VOCABULARY_EXPECTED_ID_TAKEN);
+        assertThat(res.getExpectedId()).isEqualTo(7);
+    }
+
+    @Test
+    void create_expectedIdOutOfRange_rejected() {
+        assertThat(code(() -> service.create(request("con mèo", 1000)))).isEqualTo(ErrorCode.VALIDATION_ERROR);
     }
 
     @Test

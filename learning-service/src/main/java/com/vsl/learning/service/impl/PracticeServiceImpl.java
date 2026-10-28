@@ -43,14 +43,13 @@ public class PracticeServiceImpl implements PracticeService {
     private final UserProgressRepository userProgressRepository;
 
     @Override
-    public EvaluationResponse evaluate(Long userId, MultipartFile video, int expectedId,
+    public EvaluationResponse evaluate(Long userId, MultipartFile video, Long vocabularyId, Integer expectedIdParam,
                                        float startFrac, float endFrac) {
         validateVideo(video);
         validateWindow(startFrac, endFrac);
 
-        Vocabulary vocabulary = vocabularyRepository.findFirstByExpectedId(expectedId)
-                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND,
-                        "Không tìm thấy từ vựng ứng với expectedId=" + expectedId));
+        Vocabulary vocabulary = resolveVocabulary(vocabularyId, expectedIdParam);
+        int expectedId = vocabulary.getExpectedId();
 
         List<Integer> validIds = vocabularyRepository.findExpectedIdsWithVideo();
         EvaluationResponse result = aiServiceClient.evaluate(video, expectedId, startFrac, endFrac, validIds);
@@ -108,6 +107,30 @@ public class PracticeServiceImpl implements PracticeService {
                 .longestStreak(streak.longest())
                 .weekActivity(streak.week())
                 .build();
+    }
+
+    /**
+     * Nhiều từ có thể chung một ký hiệu (cùng class AI, vd "nắm bắt" / "cơ hội") nên phải biết đúng từ đang luyện
+     * để ghi tiến trình. Chỉ có expectedId (client cũ) thì đành lấy từ đầu tiên mang class đó.
+     */
+    private Vocabulary resolveVocabulary(Long vocabularyId, Integer expectedId) {
+        if (vocabularyId == null) {
+            if (expectedId == null) {
+                throw new AppException(ErrorCode.VALIDATION_ERROR, "Cần vocabularyId (hoặc expectedId)");
+            }
+            return vocabularyRepository.findFirstByExpectedId(expectedId)
+                    .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND,
+                            "Không tìm thấy từ vựng ứng với expectedId=" + expectedId));
+        }
+        Vocabulary vocabulary = vocabularyRepository.findById(vocabularyId)
+                .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "Không tìm thấy từ vựng"));
+        if (vocabulary.getExpectedId() == null || vocabulary.getVideoTutorialUrl() == null) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, "Từ vựng này chưa luyện tập được (chưa gán class AI hoặc chưa có video mẫu)");
+        }
+        if (expectedId != null && !expectedId.equals(vocabulary.getExpectedId())) {
+            throw new AppException(ErrorCode.VALIDATION_ERROR, "expectedId không khớp với từ vựng");
+        }
+        return vocabulary;
     }
 
     private static void validateVideo(MultipartFile video) {
