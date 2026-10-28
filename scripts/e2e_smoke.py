@@ -1,11 +1,13 @@
 """Kiểm thử đầu-cuối qua API gateway (http://localhost:8080). Chạy: python -X utf8 scripts/e2e_smoke.py
 Cần stack đang chạy (docker compose up -d). Tự tạo người dùng / bài viết thử bằng tài khoản admin mặc định (dev)."""
+import atexit
 import base64
 import hashlib
 import hmac
 import json
 import os
 import struct
+import subprocess
 import time
 import urllib.error
 import urllib.request
@@ -74,6 +76,51 @@ def data(resp):
 
 tag = uuid.uuid4().hex[:6]
 
+# ---------------- Dọn dữ liệu thử khi kết thúc (kể cả khi script dừng giữa chừng) ----------------
+# Qua API: khôi phục rồi xóa bài (bài đã gỡ không xóa thẳng được), xóa từ vựng / danh mục, xóa tài khoản.
+# Xóa tài khoản qua API chỉ là xóa mềm, nên sau đó xóa hẳn các dòng còn lại bằng psql trong container postgres.
+# Giữ lại dữ liệu để soi lỗi: E2E_KEEP_DATA=1.
+created = {'users': [], 'blogs': [], 'vocabs': [], 'categories': []}
+PROJECT_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))  # __file__ is gone by atexit time
+admin = None
+
+
+def cleanup():
+    if os.environ.get('E2E_KEEP_DATA') == '1' or not admin:
+        return
+    for bid in created['blogs']:
+        call('PUT', f'/api/blogs/admin/{bid}/restore', admin)
+        call('DELETE', f'/api/blogs/{bid}', admin)
+    for vid in created['vocabs']:
+        call('DELETE', f'/api/vocabularies/{vid}', admin)
+    for cid in created['categories']:
+        call('DELETE', f'/api/categories/{cid}', admin)
+    for uid in created['users']:
+        call('DELETE', f'/api/users/admin/{uid}', admin)
+    if not created['users']:
+        return
+    ids_sql = ','.join(str(i) for i in created['users'])
+    sql = {
+        'vsl_social': f'delete from blog_notifications where actor_id in ({ids_sql}) or recipient_id in ({ids_sql});'
+                      f'delete from user_follows where follower_id in ({ids_sql}) or followee_id in ({ids_sql});',
+        'vsl_learning': f'delete from vocabulary_suggestions where requester_id in ({ids_sql});'
+                        f'delete from visit_logs where user_id in ({ids_sql});'
+                        f'delete from user_achievements where user_id in ({ids_sql});'
+                        f'delete from user_progress where user_id in ({ids_sql});'
+                        f'delete from attempt_history where user_id in ({ids_sql});',
+        'vsl_identity': f'delete from refresh_tokens where user_id in ({ids_sql});'
+                        f'delete from users where user_id in ({ids_sql});',
+    }
+    for db, q in sql.items():
+        r = subprocess.run(['docker', 'compose', 'exec', '-T', 'postgres', 'psql', '-U', 'vsl', '-d', db, '-qc', q],
+                           cwd=PROJECT_ROOT, capture_output=True, text=True)
+        if r.returncode != 0:
+            print(f'(Không xóa hẳn được dữ liệu thử trong {db}: {r.stderr.strip()[:200]})')
+    print('Đã dọn dữ liệu thử.')
+
+
+atexit.register(cleanup)
+
 # ---------------- Lỗi chuẩn hóa ----------------
 s, b = call('GET', '/api/notifications')
 check('Không token -> 401 JSON', s == 401 and isinstance(b, dict) and b.get('code') == 'AUTH_1001', (s, b))
@@ -102,6 +149,7 @@ for u in ['alice', 'bob']:
         'fullName': f'{u.title()} Nguyễn', 'role': 'USER'})
     check(f'Admin tạo {u}', s in (200, 201), (s, b))
     ids[u] = data((s, b))['id']
+    created['users'].append(ids[u])
     s, b = call('POST', '/api/auth/login', body={'username': f'{u}{tag}', 'password': 'secret123'})
     tokens[u] = data((s, b))['accessToken']
 A, B = tokens['alice'], tokens['bob']
@@ -134,6 +182,8 @@ s, b = call('POST', '/api/blogs', A, {'title': title, 'content': f'Nội dung b�
 check('Alice đăng bài (qua kiểm tra trước khi đăng)', s == 201, (s, b))
 blog = data((s, b)) or {}
 blog_id = blog.get('id')
+if blog_id:
+    created['blogs'].append(blog_id)
 check('Response có tên tác giả từ identity', (blog.get('author') or {}).get('fullName') == 'Alice Nguyễn', blog.get('author'))
 s, b = call('POST', '/api/blogs', B, {'title': title.upper(), 'content': 'khác hẳn', 'status': 'PUBLISHED'})
 check('Trùng tiêu đề (khác hoa/thường) -> 409', s == 409 and b.get('code') == 'SOCIAL_4012', (s, b))
@@ -182,11 +232,13 @@ check('Người khác không thấy bài đã gỡ', s == 404, (s, b))
 s, b = call('POST', '/api/categories', admin, {'name': f'Chủ đề {tag}', 'description': 'test'})
 check('Admin tạo danh mục', s in (200, 201), (s, b))
 cat_id = data((s, b))['id']
+created['categories'].append(cat_id)
 s, b = call('POST', '/api/categories', admin, {'name': f'  CHỦ ĐỀ {tag} ', 'description': 'test'})
 check('Tên danh mục trùng (hoa/thường) -> 409', s == 409, (s, b))
 s, b = call('POST', '/api/vocabularies', admin, {'categoryId': cat_id, 'word': f'xin chào {tag}'})
 check('Admin tạo từ vựng', s in (200, 201), (s, b))
 vocab_id = data((s, b))['id']
+created['vocabs'].append(vocab_id)
 s, b = call('POST', '/api/vocabularies', admin, {'categoryId': cat_id, 'word': f'XIN CHAO {tag}'})
 check('Từ trùng (bỏ dấu) -> 409', s == 409, (s, b))
 s, b = call('GET', f'/api/vocabularies/exists?word=Xin%20Chao%20{tag}')
