@@ -207,7 +207,7 @@ public class SignLanguageInferenceServiceImpl implements SignLanguageInferenceSe
             throw e;
         } catch (Exception e) {
             log.error("Evaluation failed for expectedId={}: {}", expectedId, e.getMessage(), e);
-            throw new AppException(ErrorCode.AI_INFERENCE_ERROR, "Khong the xu ly video: " + e.getMessage());
+            throw new AppException(ErrorCode.AI_INFERENCE_ERROR, "Không thể xử lý video: " + e.getMessage());
         } finally {
             // BAT BUOC: xoa file tam de bao ve quyen rieng tu
             if (tempFile != null && tempFile.exists()) {
@@ -246,7 +246,7 @@ public class SignLanguageInferenceServiceImpl implements SignLanguageInferenceSe
                 throw e;
             } catch (Exception e) {
                 throw new AppException(ErrorCode.VIDEO_CORRUPT,
-                        "FFmpeg khong the mo video: " + e.getMessage());
+                        "FFmpeg không mở được video: " + e.getMessage());
             }
         }
     }
@@ -509,13 +509,13 @@ public class SignLanguageInferenceServiceImpl implements SignLanguageInferenceSe
 
         if (rank == 1 && probs[expectedId] > CORRECT_CONFIDENCE_THRESHOLD) {
             status  = "CORRECT";
-            message = "Chinh xac! Ban thuc hien ky hieu rat tot.";
+            message = "Chính xác! Bạn thực hiện ký hiệu rất tốt.";
         } else if (rank <= ALMOST_CORRECT_MAX_RANK) {
             status  = "ALMOST_CORRECT";
-            message = "Gan dung! Hay chu y hon den tu the tay va goc do co the.";
+            message = "Gần đúng! Hãy chú ý hơn đến tư thế tay và góc độ cơ thể.";
         } else {
             status  = "INCORRECT";
-            message = "Chua dung. Hay xem lai video mau va thu lai tu dau.";
+            message = "Chưa đúng. Hãy xem lại video mẫu và thử lại từ đầu.";
         }
 
         return EvaluationResponse.builder()
