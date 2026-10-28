@@ -138,7 +138,7 @@ services:
       MINIO_USER: ${MINIO_USER:-minioadmin}
       MINIO_PASSWORD: ${MINIO_PASSWORD:-minioadmin}
       MODERATION_FAIL_OPEN: ${MODERATION_FAIL_OPEN:-false}
-      APP_FRONTEND_URL: ${APP_FRONTEND_URL:-http://localhost:5173}
+      APP_FRONTEND_URL: ${APP_FRONTEND_URL:-http://localhost:3000}
     depends_on:
       minio: { condition: service_started }
       postgres: { condition: service_healthy }
