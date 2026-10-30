@@ -1,18 +1,23 @@
 # Deploy lên Azure (1 máy ảo + Docker Compose + GitHub Actions)
 
 ```
-Trình duyệt ──https──► Caddy (80/443, tự xin chứng chỉ)
-                         ├─ /files/*  → MinIO (ảnh/video)
-                         └─ còn lại   → FE nginx ─ /api → api-gateway → các service (qua Eureka)
+Trình duyệt ──https──► Vercel (FE, repo TrucFPTU/mss301-vclplatform-fe)
+     │                     └─ /api/* (rewrite trong vercel.json) ─┐
+     │                                                             ▼
+     └──https /files/* ──────────────────────────────► Caddy trên máy ảo (80/443, tự xin chứng chỉ)
+                                                         ├─ /api/*   → api-gateway → các service (qua Eureka)
+                                                         ├─ /files/* → MinIO (ảnh/video)
+                                                         └─ còn lại  → chuyển hướng về FRONTEND_URL (Vercel)
 ```
 
 - **CI** (`.github/workflows/ci.yml`): mỗi lần push/PR → `mvn verify` (build + unit test).
-- **CD** (`.github/workflows/deploy.yml`): push lên `main` (hoặc bấm tay *Run workflow*) → build 7 image service +
-  image FE (lấy từ repo `NTBinh2005/mss301-vclplatform-fe`) → đẩy lên GHCR → SSH vào máy ảo, `docker compose pull && up -d`
+- **CD** (`.github/workflows/deploy.yml`): push lên `main` (hoặc bấm tay *Run workflow*) → build 7 image service
+  → đẩy lên GHCR → SSH vào máy ảo, `docker compose pull && up -d`
   → chờ `https://DOMAIN/api/categories` trả 200.
 - Chỉ mở cổng 22/80/443. Postgres, MinIO console, Eureka, Swagger **không** mở ra ngoài — cần xem thì SSH vào
   máy ảo rồi dùng `docker exec` / `docker logs` (vd. `docker exec -it vsl-postgres psql -U vsl vsl_learning`).
-- HTTPS là bắt buộc: trình duyệt chỉ cho mở camera (Phòng tập) trên trang https.
+- HTTPS là bắt buộc: FE trên Vercel là https nên ảnh/video `/files` từ máy ảo cũng phải https (không thì trình duyệt chặn).
+- FE deploy riêng trên Vercel; đổi domain máy ảo thì sửa cả `vercel.json` bên repo FE.
 
 ## Làm 1 lần
 
@@ -28,7 +33,8 @@ Trình duyệt ──https──► Caddy (80/443, tự xin chứng chỉ)
   Bật lại IP công khai có thể đổi, nhưng tên DNS `cloudapp.azure.com` vẫn giữ.
 
 ### 2. Điền `deploy/.env`
-Chép `deploy/.env.example` → `deploy/.env` (đã gitignore), sửa `DOMAIN` cho đúng tên miền ở bước 1.
+Chép `deploy/.env.example` → `deploy/.env` (đã gitignore), sửa `DOMAIN` cho đúng tên miền ở bước 1
+và `FRONTEND_URL` = link Vercel của FE.
 Mật khẩu DB/MinIO/JWT tạo mới bằng `openssl rand` (không dùng giá trị dev `vsl`/`minioadmin`).
 
 ### 3. Đẩy cấu hình, model AI và dữ liệu lên máy ảo (Git Bash, từ thư mục gốc repo)
@@ -51,11 +57,11 @@ Repo backend → Settings → Secrets and variables → Actions → *New reposit
 | `VM_USER` | `azureuser` |
 | `VM_SSH_KEY` | toàn bộ nội dung file `.pem` |
 
-Rồi Actions → **Deploy** → *Run workflow* (chọn nhánh FE, mặc định `main`).
+Rồi Actions → **Deploy** → *Run workflow*.
 Image được đẩy lên `ghcr.io/trucfptu/vsl-*`; máy ảo đăng nhập GHCR bằng token tạm của chính lần chạy đó.
 
 ## Hằng ngày
-- Merge vào `main` → tự deploy. Chỉ FE đổi → bấm tay *Run workflow*.
+- Backend: merge vào `main` → tự deploy. FE: Vercel tự deploy khi repo FE có commit mới.
 - Xem log: `ssh azureuser@IP "cd /opt/vsl && docker compose -f docker-compose.prod.yml logs -f --tail 100 learning-service"`.
 - Quay lại bản cũ: đặt `IMAGE_TAG=<7 ký tự sha>` trong `/opt/vsl/.env` → `docker compose ... up -d`.
 

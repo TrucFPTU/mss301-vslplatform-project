@@ -6,7 +6,8 @@
 #   - Chỉ mở cổng 80/443 (Caddy, tự xin chứng chỉ HTTPS). Postgres, MinIO, Eureka,
 #     gateway... chỉ nằm trong mạng Docker — muốn xem thì dùng SSH tunnel.
 #   - Mọi bí mật BẮT BUỘC đặt trong deploy/.env (thiếu là compose báo lỗi, không có mặc định).
-#   - Có FE (nginx) chạy chung, Caddy đứng trước: /files/* → MinIO, còn lại → FE.
+#   - FE chạy trên Vercel (repo TrucFPTU/mss301-vclplatform-fe, vercel.json chuyển /api về đây).
+#     Caddy: /api/* → api-gateway, /files/* → MinIO, còn lại → chuyển hướng sang FRONTEND_URL.
 # Chạy trên máy ảo:  docker compose -f docker-compose.prod.yml --env-file .env up -d
 # =====================================================================
 
@@ -42,18 +43,12 @@ services:
     environment:
       DOMAIN: ${DOMAIN:?Thiếu DOMAIN}
       ACME_EMAIL: ${ACME_EMAIL:?Thiếu ACME_EMAIL}
+      FRONTEND_URL: ${FRONTEND_URL:?Thiếu FRONTEND_URL}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddydata:/data
       - caddyconfig:/config
-    depends_on: [fe, minio]
-    networks: [vsl-net]
-
-  fe:
-    image: ${IMAGE_PREFIX:?Thiếu IMAGE_PREFIX}/vsl-fe:${IMAGE_TAG:-latest}
-    container_name: vsl-fe
-    restart: unless-stopped
-    depends_on: [api-gateway]
+    depends_on: [api-gateway, minio]
     networks: [vsl-net]
 
   # ---------- Hạ tầng ----------
@@ -120,7 +115,7 @@ services:
       DB_URL: jdbc:postgresql://postgres:5432/vsl_identity
       RESEND_API_KEY: ${RESEND_API_KEY:-}
       RESEND_FROM_EMAIL: "${RESEND_FROM_EMAIL:-SignMentor <onboarding@resend.dev>}"
-      APP_FRONTEND_URL: https://${DOMAIN}
+      APP_FRONTEND_URL: ${FRONTEND_URL}
       JAVA_TOOL_OPTIONS: -Xmx512m
     depends_on:
       minio: { condition: service_started }
@@ -150,7 +145,7 @@ services:
       <<: [*common-env, *storage-env]
       DB_URL: jdbc:postgresql://postgres:5432/vsl_social
       MODERATION_FAIL_OPEN: ${MODERATION_FAIL_OPEN:-false}
-      APP_FRONTEND_URL: https://${DOMAIN}
+      APP_FRONTEND_URL: ${FRONTEND_URL}
       JAVA_TOOL_OPTIONS: -Xmx512m
     depends_on:
       minio: { condition: service_started }
