@@ -19,7 +19,13 @@ DOMAIN=$(envget DOMAIN "$ENV_PROD")
 echo ">> [1] Chuẩn bị máy ảo"
 ssh "$VM" 'bash -s' < "$ROOT/deploy/setup-vm.sh"
 
-echo ">> [2] Chép cấu hình + model AI"
+echo ">> [2] Chép cấu hình + model AI + image MinIO"
+# MinIO không còn image tải được từ Docker Hub -> chép bản máy dev đang có (ghim trong docker-compose.prod.yml).
+MINIO_IMAGE=$(grep -m1 -o 'minio/minio:RELEASE[^[:space:]]*' "$ROOT/deploy/docker-compose.prod.yml")
+if ! ssh "$VM" "sudo docker image inspect $MINIO_IMAGE >/dev/null 2>&1"; then
+  docker image inspect "$MINIO_IMAGE" >/dev/null 2>&1 || docker tag minio/minio:latest "$MINIO_IMAGE"
+  docker save "$MINIO_IMAGE" | gzip -1 | ssh "$VM" "gunzip | sudo docker load"
+fi
 # Bỏ \r (file sửa trên Windows / openssl của Git Bash): lọt \r vào JWT_SECRET là service không khởi động được.
 tr -d '\r' < "$ENV_PROD" | ssh "$VM" "cat > $REMOTE/.env && chmod 600 $REMOTE/.env"
 scp "$ROOT/deploy/docker-compose.prod.yml" "$ROOT/deploy/Caddyfile" "$ROOT/scripts/init-multiple-databases.sql" "$VM:$REMOTE/"
