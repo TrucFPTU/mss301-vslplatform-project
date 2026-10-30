@@ -30,6 +30,10 @@ public interface VocabularyRepository extends JpaRepository<Vocabulary, Long> {
     @EntityGraph(attributePaths = {"category"})
     Page<Vocabulary> findAllBy(Pageable pageable);
 
+    /** Toàn bộ từ vựng kèm danh mục (trợ lý học tập cần cả danh sách - vài trăm từ là cùng). */
+    @EntityGraph(attributePaths = {"category"})
+    List<Vocabulary> findAllByOrderByIdAsc();
+
     @EntityGraph(attributePaths = {"category"})
     Page<Vocabulary> findByWordContainingIgnoreCase(String keyword, Pageable pageable);
 
