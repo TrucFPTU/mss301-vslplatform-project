@@ -60,6 +60,9 @@ Image được đẩy lên `ghcr.io/trucfptu/vsl-*`; máy ảo đăng nhập GHC
 - Quay lại bản cũ: đặt `IMAGE_TAG=<7 ký tự sha>` trong `/opt/vsl/.env` → `docker compose ... up -d`.
 
 ## Lưu ý
+- ⚠️ **Tài khoản `admin`/`admin123`**: identity tự tạo khi DB CHƯA có admin nào. Deploy kèm `--with-data` thì DB được
+  thay bằng dữ liệu thật (admin là `admin01`) nên không sao. Deploy với DB trống thì phải đăng nhập `admin` và
+  **đổi mật khẩu ngay** (trang đã công khai trên internet).
 - **OTP đăng ký (Resend)**: chưa xác minh domain thì chỉ gửi được tới email chủ tài khoản Resend ⇒ người khác không
   đăng ký được. Xác minh domain trên resend.com, đặt `RESEND_FROM_EMAIL=SignMentor <no-reply@domain>`.
   (Tên `cloudapp.azure.com` không xác minh được — cần domain riêng.)
