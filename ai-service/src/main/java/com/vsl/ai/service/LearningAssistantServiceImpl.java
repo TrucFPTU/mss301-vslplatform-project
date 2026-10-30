@@ -157,7 +157,9 @@ public class LearningAssistantServiceImpl implements LearningAssistantService {
         sb.append("GỢI Ý HỌC TIẾP (id | từ | lý do), theo thứ tự ưu tiên:\n");
         List<Recommendation> recs = nullSafe(c.recommendations());
         if (recs.isEmpty()) {
-            sb.append("(không còn từ nào để gợi ý - người học đã thuộc hết các từ luyện được)\n");
+            sb.append(c.practicableVocabularies() == 0
+                    ? "(hệ thống chưa có từ nào luyện được bằng camera)\n"
+                    : "(không còn từ nào để gợi ý - người học đã thuộc hết các từ luyện được)\n");
         }
         for (Recommendation r : recs) {
             sb.append(r.vocabularyId()).append(" | ").append(r.word()).append(" | ").append(r.reason()).append('\n');
