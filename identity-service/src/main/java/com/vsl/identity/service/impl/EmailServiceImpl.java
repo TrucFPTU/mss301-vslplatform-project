@@ -28,6 +28,10 @@ public class EmailServiceImpl implements EmailService {
     @Value("${RESEND_FROM_EMAIL:SignMentor <onboarding@resend.dev>}")
     private String fromEmail;
 
+    // Nút "Luyện tập ngay" trong email nhắc streak trỏ về FE đang chạy.
+    @Value("${APP_FRONTEND_URL:http://localhost:3000}")
+    private String frontendUrl;
+
     private final RestTemplate restTemplate = new RestTemplate();
 
     @Async
@@ -101,7 +105,7 @@ public class EmailServiceImpl implements EmailService {
                       <div style="color: #9ca3af; font-size: 13px; text-transform: uppercase; letter-spacing: 2px;">Ngày liên tiếp</div>
                     </div>
                     <div style="text-align: center; margin-bottom: 28px;">
-                      <a href="https://sighmentor.click"
+                      <a href="%s"
                          style="display: inline-block; background: linear-gradient(135deg, #4f46e5 0%%, #7c3aed 100%%); color: #fff; text-decoration: none; font-weight: 700; font-size: 16px; padding: 14px 36px; border-radius: 10px; box-shadow: 0 4px 24px rgba(79,70,229,0.4);">
                         📚 Luyện tập ngay
                       </a>
@@ -112,7 +116,7 @@ public class EmailServiceImpl implements EmailService {
                     </p>
                   </div>
                 </div>
-                """.formatted(fireEmojis, displayName, currentStreak, currentStreak);
+                """.formatted(fireEmojis, displayName, currentStreak, currentStreak, frontendUrl);
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);

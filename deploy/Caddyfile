@@ -1,0 +1,19 @@
+# Caddy tự xin + gia hạn chứng chỉ HTTPS (Let's Encrypt) cho DOMAIN.
+# HTTPS là bắt buộc: trình duyệt chỉ cho mở camera (Phòng tập) trên trang https.
+{
+	email {$ACME_EMAIL}
+}
+
+{$DOMAIN} {
+	encode gzip
+
+	# Ảnh/video MinIO: MINIO_PUBLIC_ENDPOINT = https://DOMAIN/files → bỏ tiền tố rồi chuyển cho MinIO.
+	handle_path /files/* {
+		reverse_proxy minio:9000
+	}
+
+	# Còn lại (giao diện + /api) → nginx của FE (nginx tự chuyển /api sang api-gateway).
+	handle {
+		reverse_proxy fe:80
+	}
+}
