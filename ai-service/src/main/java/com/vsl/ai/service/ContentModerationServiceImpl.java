@@ -13,17 +13,10 @@ import com.vsl.ai.dto.ContentAiDtos.VocabEntry;
 import com.vsl.common.exception.AppException;
 import com.vsl.common.exception.ErrorCode;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 /**
  * Gọi Gemini generateContent (JSON mode). Bê từ GeminiModerationService của monolith.
@@ -78,24 +71,15 @@ public class ContentModerationServiceImpl implements ContentModerationService {
             """;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
-    private final HttpClient httpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
+    private final GeminiClient gemini;
 
-    @Value("${gemini.api-key:}")
-    private String apiKey;
-
-    @Value("${gemini.model:gemini-3.5-flash-lite}")
-    private String model;
-
-    /** Model dự phòng (phân tách dấu phẩy) - thử lần lượt khi model chính quá tải (429/503) hoặc không phản hồi. */
-    @Value("${gemini.fallback-models:gemini-3.1-flash-lite,gemini-2.5-flash-lite}")
-    private List<String> fallbackModels = List.of();
-
-    @Value("${gemini.enabled:true}")
-    private boolean enabled;
+    public ContentModerationServiceImpl(GeminiClient gemini) {
+        this.gemini = gemini;
+    }
 
     @Override
     public boolean isEnabled() {
-        return enabled && apiKey != null && !apiKey.isBlank();
+        return gemini.isEnabled();
     }
 
     @Override
@@ -183,90 +167,17 @@ public class ContentModerationServiceImpl implements ContentModerationService {
         }
     }
 
-    /** Gọi Gemini, trả raw body. Lỗi mạng / HTTP != 200 -> AppException(errorCode). (package-private để test thay thế.) */
+    /** Gọi Gemini, trả raw body. (package-private để test thay thế.) */
     String callGemini(String prompt, ErrorCode errorCode) {
-        String requestBody;
-        try {
-            requestBody = objectMapper.writeValueAsString(Map.of(
-                    "contents", List.of(Map.of("parts", List.of(Map.of("text", prompt)))),
-                    "generationConfig", Map.of("temperature", 0, "responseMimeType", "application/json")));
-        } catch (Exception e) {
-            throw new AppException(errorCode);
-        }
-
-        // Google thỉnh thoảng báo một model "quá tải" (503) / giới hạn tốc độ (429) / treo: đó là lỗi tạm thời của
-        // RIÊNG model đó, nên thử model dự phòng trước khi kết luận kiểm duyệt không khả dụng (fail-closed).
-        List<String> models = new ArrayList<>();
-        models.add(model);
-        fallbackModels.stream().map(String::trim).filter(m -> !m.isEmpty() && !models.contains(m)).forEach(models::add);
-        for (String m : models) {
-            HttpResponse<String> response;
-            try {
-                HttpRequest request = HttpRequest.newBuilder()
-                        .uri(URI.create("https://generativelanguage.googleapis.com/v1beta/models/" + m + ":generateContent"))
-                        .timeout(Duration.ofSeconds(25))
-                        .header("Content-Type", "application/json")
-                        .header("x-goog-api-key", apiKey)
-                        .POST(HttpRequest.BodyPublishers.ofString(requestBody))
-                        .build();
-                response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                throw new AppException(errorCode);
-            } catch (Exception e) {
-                log.warn("Gọi Gemini ({}) thất bại: {} - thử model kế tiếp", m, e.getMessage());
-                continue;
-            }
-            int code = response.statusCode();
-            if (code == 200) {
-                return response.body();
-            }
-            if (code == 429 || code == 503 || code == 500 || code == 404) {
-                log.warn("Gemini ({}) trả HTTP {} - thử model kế tiếp: {}", m, code, truncate(response.body()));
-                continue;
-            }
-            // 400/401/403: lỗi cấu hình (khóa sai, request sai) - đổi model cũng không khỏi.
-            log.error("Gemini ({}) trả HTTP {}: {}", m, code, truncate(response.body()));
-            throw new AppException(errorCode);
-        }
-        log.error("Mọi model Gemini đều không khả dụng: {}", models);
-        throw new AppException(errorCode);
+        return gemini.generateJson(prompt, 0, errorCode);
     }
 
     private JsonNode readTree(String body, ErrorCode errorCode) {
-        try {
-            return objectMapper.readTree(body);
-        } catch (Exception e) {
-            log.error("Phản hồi Gemini không phải JSON: {}", truncate(body));
-            throw new AppException(errorCode);
-        }
+        return gemini.readTree(body, errorCode);
     }
 
-    /** Đọc JSON trong candidates[0].content.parts[0].text (bỏ ```json fence nếu có). */
     private JsonNode parseCandidateJson(JsonNode candidates, ErrorCode errorCode) {
-        if (!candidates.isArray() || candidates.isEmpty()) {
-            throw new AppException(errorCode);
-        }
-        String text = candidates.get(0).path("content").path("parts").path(0).path("text").asText("");
-        if (text.isBlank()) {
-            throw new AppException(errorCode);
-        }
-        try {
-            return objectMapper.readTree(stripCodeFence(text));
-        } catch (Exception e) {
-            log.error("Không đọc được JSON trong phản hồi Gemini: {}", truncate(text));
-            throw new AppException(errorCode);
-        }
-    }
-
-    private static String stripCodeFence(String text) {
-        String t = text.trim();
-        if (t.startsWith("```")) {
-            int firstNewline = t.indexOf('\n');
-            if (firstNewline >= 0) t = t.substring(firstNewline + 1);
-            if (t.endsWith("```")) t = t.substring(0, t.length() - 3);
-        }
-        return t.trim();
+        return gemini.parseCandidateJson(candidates, errorCode);
     }
 
     private static String nullToEmpty(String s) {
@@ -274,7 +185,6 @@ public class ContentModerationServiceImpl implements ContentModerationService {
     }
 
     private static String truncate(String s) {
-        if (s == null) return "";
-        return s.length() <= 500 ? s : s.substring(0, 500) + "...";
+        return GeminiClient.truncate(s);
     }
 }

@@ -12,7 +12,6 @@ import com.vsl.common.exception.AppException;
 import com.vsl.common.exception.ErrorCode;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
 
@@ -23,7 +22,7 @@ class ContentModerationServiceTest {
 
     /** Thay callGemini bằng phản hồi cố định -> test phần phân tích mà không gọi mạng. */
     private static ContentModerationServiceImpl withResponse(String geminiText) {
-        ContentModerationServiceImpl service = new ContentModerationServiceImpl() {
+        ContentModerationServiceImpl service = new ContentModerationServiceImpl(gemini("test-key")) {
             @Override
             String callGemini(String prompt, ErrorCode errorCode) {
                 if (geminiText == null) {
@@ -32,10 +31,11 @@ class ContentModerationServiceTest {
                 return "{\"candidates\":[{\"content\":{\"parts\":[{\"text\":" + quote(geminiText) + "}]}}]}";
             }
         };
-        ReflectionTestUtils.setField(service, "apiKey", "test-key");
-        ReflectionTestUtils.setField(service, "enabled", true);
-        ReflectionTestUtils.setField(service, "model", "gemini-test");
         return service;
+    }
+
+    private static GeminiClient gemini(String apiKey) {
+        return new GeminiClient(apiKey, "gemini-test", List.of(), true);
     }
 
     private static String quote(String s) {
@@ -45,9 +45,7 @@ class ContentModerationServiceTest {
     @Test
     @DisplayName("Chưa cấu hình key -> không kiểm, cho đăng (checked=false)")
     void disabled_AllowsWithoutCheck() {
-        ContentModerationServiceImpl service = new ContentModerationServiceImpl();
-        ReflectionTestUtils.setField(service, "apiKey", "");
-        ReflectionTestUtils.setField(service, "enabled", true);
+        ContentModerationServiceImpl service = new ContentModerationServiceImpl(gemini(""));
 
         ModerationResult result = service.moderate(new ModerationRequest("t", "c"));
 

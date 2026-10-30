@@ -46,6 +46,7 @@ public enum ErrorCode {
     AI_SERVICE_BUSY("AI_3007", "Hệ thống AI đang quá tải, vui lòng thử lại sau", HttpStatus.SERVICE_UNAVAILABLE),
     MODERATION_ERROR("AI_3008", "Hệ thống kiểm duyệt nội dung đang gặp sự cố, vui lòng thử lại sau", HttpStatus.SERVICE_UNAVAILABLE),
     AI_EXTERNAL_ERROR("AI_3009", "Dịch vụ AI bên ngoài đang gặp sự cố, vui lòng thử lại sau", HttpStatus.SERVICE_UNAVAILABLE),
+    AI_ASSISTANT_RATE_LIMITED("AI_3010", "Bạn hỏi trợ lý hơi nhanh, chờ một chút rồi hỏi tiếp nhé", HttpStatus.TOO_MANY_REQUESTS),
 
     // ---- Social ----
     BLOG_NOT_FOUND("SOCIAL_4001", "Không tìm thấy bài viết", HttpStatus.NOT_FOUND),

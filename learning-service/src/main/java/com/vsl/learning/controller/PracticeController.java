@@ -3,9 +3,11 @@ package com.vsl.learning.controller;
 import com.vsl.common.response.ApiResponse;
 import com.vsl.learning.dto.ai.EvaluationResponse;
 import com.vsl.learning.dto.response.AchievementResponse;
+import com.vsl.learning.dto.response.AssistantContextResponse;
 import com.vsl.learning.dto.response.PracticeStatsResponse;
 import com.vsl.learning.dto.response.UserProgressResponse;
 import com.vsl.learning.service.AchievementService;
+import com.vsl.learning.service.AssistantContextService;
 import com.vsl.learning.service.PracticeService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -25,6 +27,7 @@ public class PracticeController {
 
     private final PracticeService practiceService;
     private final AchievementService achievementService;
+    private final AssistantContextService assistantContextService;
 
     @Operation(summary = "Nộp video luyện tập để AI chấm điểm",
             description = "learning-service gọi ai-service chấm điểm rồi lưu lịch sử, tiến trình, thành tựu. "
@@ -58,5 +61,13 @@ public class PracticeController {
     @GetMapping("/achievements")
     public ApiResponse<List<AchievementResponse>> getAchievements(@AuthenticationPrincipal Long userId) {
         return ApiResponse.ok(achievementService.getAll(userId));
+    }
+
+    @Operation(summary = "Dữ liệu cho trợ lý học tập",
+            description = "Tổng quan hệ thống, tiến độ của tôi và gợi ý từ nên học tiếp. ai-service gọi khi người học "
+                    + "hỏi trợ lý (chuyển tiếp JWT của người học).")
+    @GetMapping("/assistant-context")
+    public ApiResponse<AssistantContextResponse> getAssistantContext(@AuthenticationPrincipal Long userId) {
+        return ApiResponse.ok(assistantContextService.getContext(userId));
     }
 }
