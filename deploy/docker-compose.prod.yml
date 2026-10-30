@@ -70,7 +70,10 @@ services:
     networks: [vsl-net]
 
   minio:
-    image: minio/minio:latest
+    # MinIO đã ngừng phát hành image miễn phí (Docker Hub / quay.io trả "pull access denied").
+    # Ghim đúng bản dev đang dùng; push-data.sh chép image từ máy dev lên máy ảo, compose không tải lại.
+    image: minio/minio:RELEASE.2025-09-07T16-13-09Z
+    pull_policy: missing
     container_name: vsl-minio
     restart: unless-stopped
     command: server /data --console-address ":9001"
