@@ -13,14 +13,15 @@ REMOTE=/opt/vsl
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 ENV_PROD="$ROOT/deploy/.env"
 [ -f "$ENV_PROD" ] || { echo "Thiếu deploy/.env (chép từ deploy/.env.example)"; exit 1; }
-envget() { grep "^$1=" "$2" | head -1 | cut -d= -f2-; }
+envget() { grep "^$1=" "$2" | head -1 | cut -d= -f2- | tr -d '\r'; }
 DOMAIN=$(envget DOMAIN "$ENV_PROD")
 
 echo ">> [1] Chuẩn bị máy ảo"
 ssh "$VM" 'bash -s' < "$ROOT/deploy/setup-vm.sh"
 
 echo ">> [2] Chép cấu hình + model AI"
-scp "$ENV_PROD" "$VM:$REMOTE/.env"
+# Bỏ \r (file sửa trên Windows / openssl của Git Bash): lọt \r vào JWT_SECRET là service không khởi động được.
+tr -d '\r' < "$ENV_PROD" | ssh "$VM" "cat > $REMOTE/.env && chmod 600 $REMOTE/.env"
 scp "$ROOT/deploy/docker-compose.prod.yml" "$ROOT/deploy/Caddyfile" "$ROOT/scripts/init-multiple-databases.sql" "$VM:$REMOTE/"
 scp "$ROOT/models/mvitv2_small.onnx" "$VM:$REMOTE/models/"
 
