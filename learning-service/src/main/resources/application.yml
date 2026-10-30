@@ -10,6 +10,11 @@ spring:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/vsl_learning}
     username: ${DB_USERNAME:vsl}
     password: ${DB_PASSWORD:vsl}
+  # Video luyện tập được upload vào đây rồi chuyển tiếp sang ai-service (giới hạn giống ai-service).
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
   jpa:
     hibernate:
       ddl-auto: update
@@ -23,6 +28,44 @@ security:
     secret: ${JWT_SECRET:dGhpcy1pcy1hLXZlcnktbG9uZy1kZXZlbG9wbWVudC1zZWNyZXQta2V5LWZvci1oczI1Ni1hbGdvcml0aG0tMTIzNDU2}
     access-token-ttl-minutes: 30
     refresh-token-ttl-days: 7
+
+# Gọi ai-service bằng TÊN Eureka (load-balanced), không dùng IP.
+ai-service:
+  base-url: http://ai-service
+  connect-timeout: 5s
+  read-timeout: 120s   # suy luận video có thể lâu
+
+# Ảnh/video từ vựng + ảnh danh mục lưu ở MinIO (bucket do learning sở hữu, giữ tên như monolith).
+minio:
+  endpoint: ${MINIO_ENDPOINT:http://localhost:9000}
+  public-endpoint: ${MINIO_PUBLIC_ENDPOINT:http://localhost:9000}
+  access-key: ${MINIO_USER:minioadmin}
+  secret-key: ${MINIO_PASSWORD:minioadmin}
+  buckets:
+    - tutorial-videos
+    - vocabulary-images
+    - category-images
+
+# Lấy số liệu tổng hợp (public-stats, dashboard admin, streak-reminder) từ service khác qua Eureka.
+identity-service:
+  base-url: http://identity-service
+  timeout: 3s
+social-service:
+  base-url: http://social-service
+  timeout: 3s
+
+# Nhắc nhở streak qua email (mail do identity-service gửi). Demo nhanh: cron "0 * * * * *" (mỗi phút).
+streak-reminder:
+  enabled: ${STREAK_REMINDER_ENABLED:true}
+  cron: ${STREAK_REMINDER_CRON:0 0 19 * * *}
+  zone: Asia/Ho_Chi_Minh
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_URI:http://localhost:8761/eureka/}
+  instance:
+    prefer-ip-address: true
 
 management:
   endpoints:

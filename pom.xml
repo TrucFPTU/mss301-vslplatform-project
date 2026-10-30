@@ -48,6 +48,8 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <!-- Spring Cloud release train tương thích Spring Boot 4.0.x -->
         <spring-cloud.version>2025.1.2</spring-cloud.version>
+        <!-- MinIO client (lưu ảnh/video) - giữ đúng bản monolith cũ đang dùng -->
+        <minio.version>8.5.10</minio.version>
     </properties>
 
     <dependencyManagement>
@@ -66,6 +68,12 @@
                 <groupId>com.vsl</groupId>
                 <artifactId>common-lib</artifactId>
                 <version>${project.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>io.minio</groupId>
+                <artifactId>minio</artifactId>
+                <version>${minio.version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

@@ -67,6 +67,21 @@
             <scope>runtime</scope>
         </dependency>
 
+        <!-- spring-tx: cho DataExceptionHandler (DataIntegrityViolationException). optional → service có JPA tự có. -->
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-tx</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <!-- MinIO: optional → chỉ service cần lưu file (identity/learning/social) tự khai minio,
+             StorageAutoConfiguration chỉ bật khi có class MinioClient + cấu hình minio.endpoint. -->
+        <dependency>
+            <groupId>io.minio</groupId>
+            <artifactId>minio</artifactId>
+            <optional>true</optional>
+        </dependency>
+
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>

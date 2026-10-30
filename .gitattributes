@@ -1,0 +1,4 @@
+# Script chạy trên Linux (máy ảo, GitHub Actions): luôn giữ xuống dòng LF dù checkout trên Windows.
+*.sh text eol=lf
+Caddyfile text eol=lf
+*.yml text eol=lf

@@ -2,3 +2,4 @@ com.vsl.common.security.JwtAutoConfiguration
 com.vsl.common.web.WebAutoConfiguration
 com.vsl.common.openapi.OpenApiAutoConfiguration
 com.vsl.common.devtools.DevToolsAutoConfiguration
+com.vsl.common.storage.StorageAutoConfiguration

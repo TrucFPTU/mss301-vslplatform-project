@@ -1,0 +1,32 @@
+# Caddy tự xin + gia hạn chứng chỉ HTTPS (Let's Encrypt) cho DOMAIN.
+# HTTPS bắt buộc: ảnh/video (/files) được nhúng vào trang FE https trên Vercel.
+{
+	email {$ACME_EMAIL}
+}
+
+{$DOMAIN} {
+	encode gzip
+
+	# API: Vercel chuyển /api/* về đây (vercel.json của FE). Chấm điểm AI / chuyển mã video có thể mất vài phút.
+	handle /api/* {
+		request_body {
+			max_size 60MB
+		}
+		reverse_proxy api-gateway:8080 {
+			transport http {
+				read_timeout 200s
+				write_timeout 200s
+			}
+		}
+	}
+
+	# Ảnh/video MinIO: MINIO_PUBLIC_ENDPOINT = https://DOMAIN/files → bỏ tiền tố rồi chuyển cho MinIO.
+	handle_path /files/* {
+		reverse_proxy minio:9000
+	}
+
+	# Giao diện nằm trên Vercel.
+	handle {
+		redir {$FRONTEND_URL}{uri} 302
+	}
+}

@@ -1,0 +1,104 @@
+# CD: build image 7 service → đẩy lên GHCR → SSH vào máy ảo Azure, kéo image mới và chạy lại.
+# FE deploy riêng trên Vercel (repo TrucFPTU/mss301-vclplatform-fe).
+# Chạy khi push lên main, hoặc bấm tay: Actions → Deploy → Run workflow.
+# Cần Secrets của repo (Settings → Secrets and variables → Actions):
+#   VM_HOST (IP/tên miền máy ảo) · VM_USER (vd. azureuser) · VM_SSH_KEY (private key SSH)
+# Chưa đặt VM_HOST thì chỉ build + đẩy image, bỏ qua bước deploy.
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  packages: write
+
+env:
+  DEPLOY_DIR: /opt/vsl
+
+jobs:
+  build-push:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.meta.outputs.tag }}
+      prefix: ${{ steps.meta.outputs.prefix }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+      - id: meta
+        run: |
+          echo "tag=${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+          echo "prefix=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"
+      - name: Build jar
+        run: mvn -B -ntp -DskipTests package
+      - name: Đăng nhập GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+      - name: Build + push image
+        env:
+          PREFIX: ${{ steps.meta.outputs.prefix }}
+          TAG: ${{ steps.meta.outputs.tag }}
+        run: |
+          set -e
+          build() {  # $1 = tên image, $2 = thư mục build
+            docker build -t "$PREFIX/vsl-$1:$TAG" -t "$PREFIX/vsl-$1:latest" \
+              --label org.opencontainers.image.source="https://github.com/${GITHUB_REPOSITORY}" "$2"
+            docker push --all-tags "$PREFIX/vsl-$1"
+          }
+          for svc in eureka-server config-server api-gateway identity-service learning-service social-service ai-service; do
+            build "$svc" "./$svc"
+          done
+
+  deploy:
+    needs: build-push
+    runs-on: ubuntu-latest
+    env:
+      VM_HOST: ${{ secrets.VM_HOST }}
+    steps:
+      - uses: actions/checkout@v4
+        if: env.VM_HOST != ''
+      - name: Chưa cấu hình máy ảo
+        if: env.VM_HOST == ''
+        run: echo "::warning::Chưa đặt secret VM_HOST — chỉ build image, không deploy."
+      - name: Chuẩn bị SSH
+        if: env.VM_HOST != ''
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VM_SSH_KEY }}" > ~/.ssh/id_vm
+          chmod 600 ~/.ssh/id_vm
+          ssh-keyscan -H "$VM_HOST" >> ~/.ssh/known_hosts
+      - name: Chép cấu hình + khởi động lại
+        if: env.VM_HOST != ''
+        env:
+          VM_USER: ${{ secrets.VM_USER }}
+          TAG: ${{ needs.build-push.outputs.tag }}
+        run: |
+          set -e
+          SSH="ssh -i $HOME/.ssh/id_vm $VM_USER@$VM_HOST"
+          scp -i ~/.ssh/id_vm deploy/docker-compose.prod.yml deploy/Caddyfile scripts/init-multiple-databases.sql \
+            "$VM_USER@$VM_HOST:$DEPLOY_DIR/"
+          echo "${{ secrets.GITHUB_TOKEN }}" | $SSH "docker login ghcr.io -u ${{ github.actor }} --password-stdin"
+          $SSH "cd $DEPLOY_DIR && export IMAGE_TAG=$TAG \
+            && docker compose -f docker-compose.prod.yml --env-file .env pull \
+            && docker compose -f docker-compose.prod.yml --env-file .env up -d --remove-orphans \
+            && docker image prune -f"
+      - name: Kiểm tra trang đã lên
+        if: env.VM_HOST != ''
+        run: |
+          DOMAIN=$(ssh -i ~/.ssh/id_vm "${{ secrets.VM_USER }}@$VM_HOST" "grep '^DOMAIN=' $DEPLOY_DIR/.env | cut -d= -f2")
+          for i in $(seq 1 30); do
+            code=$(curl -s -o /dev/null -w '%{http_code}' "https://$DOMAIN/api/categories" || true)
+            echo "lần $i: $code"
+            [ "$code" = "200" ] && exit 0
+            sleep 10
+          done
+          echo "::error::Sau 5 phút https://$DOMAIN vẫn chưa trả 200"; exit 1
