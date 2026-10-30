@@ -1,0 +1,183 @@
+# =====================================================================
+# VSL Platform — bản CHẠY THẬT trên máy ảo Azure (xem deploy/README.md).
+#
+# Khác docker-compose.yml (dev):
+#   - Image lấy sẵn từ GHCR (GitHub Actions build), không build trên máy ảo.
+#   - Chỉ mở cổng 80/443 (Caddy, tự xin chứng chỉ HTTPS). Postgres, MinIO, Eureka,
+#     gateway... chỉ nằm trong mạng Docker — muốn xem thì dùng SSH tunnel.
+#   - Mọi bí mật BẮT BUỘC đặt trong deploy/.env (thiếu là compose báo lỗi, không có mặc định).
+#   - Có FE (nginx) chạy chung, Caddy đứng trước: /files/* → MinIO, còn lại → FE.
+# Chạy trên máy ảo:  docker compose -f docker-compose.prod.yml --env-file .env up -d
+# =====================================================================
+
+x-java-service: &java-service
+  restart: unless-stopped
+  networks: [vsl-net]
+  logging:
+    driver: json-file
+    options: { max-size: "20m", max-file: "3" }
+
+x-common-env: &common-env
+  EUREKA_URI: http://eureka-server:8761/eureka/
+  CONFIG_URI: http://config-server:8888
+  JWT_SECRET: ${JWT_SECRET:?Thiếu JWT_SECRET trong .env}
+
+x-storage-env: &storage-env
+  DB_USERNAME: ${DB_USERNAME:?Thiếu DB_USERNAME}
+  DB_PASSWORD: ${DB_PASSWORD:?Thiếu DB_PASSWORD}
+  MINIO_ENDPOINT: http://minio:9000
+  MINIO_PUBLIC_ENDPOINT: https://${DOMAIN}/files
+  MINIO_USER: ${MINIO_USER:?Thiếu MINIO_USER}
+  MINIO_PASSWORD: ${MINIO_PASSWORD:?Thiếu MINIO_PASSWORD}
+
+services:
+  # ---------- Cửa ngõ: HTTPS ----------
+  caddy:
+    image: caddy:2.8
+    container_name: vsl-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN:?Thiếu DOMAIN}
+      ACME_EMAIL: ${ACME_EMAIL:?Thiếu ACME_EMAIL}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddydata:/data
+      - caddyconfig:/config
+    depends_on: [fe, minio]
+    networks: [vsl-net]
+
+  fe:
+    image: ${IMAGE_PREFIX:?Thiếu IMAGE_PREFIX}/vsl-fe:${IMAGE_TAG:-latest}
+    container_name: vsl-fe
+    restart: unless-stopped
+    depends_on: [api-gateway]
+    networks: [vsl-net]
+
+  # ---------- Hạ tầng ----------
+  postgres:
+    image: postgres:17-alpine
+    container_name: vsl-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USERNAME:?Thiếu DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Thiếu DB_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./init-multiple-databases.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks: [vsl-net]
+
+  minio:
+    image: minio/minio:latest
+    container_name: vsl-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_USER:?Thiếu MINIO_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_PASSWORD:?Thiếu MINIO_PASSWORD}
+    volumes:
+      - miniodata:/data
+    networks: [vsl-net]
+
+  # ---------- Spring Cloud ----------
+  eureka-server:
+    <<: *java-service
+    image: ${IMAGE_PREFIX}/vsl-eureka-server:${IMAGE_TAG:-latest}
+    container_name: vsl-eureka
+    environment:
+      JAVA_TOOL_OPTIONS: -Xmx256m
+
+  config-server:
+    <<: *java-service
+    image: ${IMAGE_PREFIX}/vsl-config-server:${IMAGE_TAG:-latest}
+    container_name: vsl-config
+    environment:
+      JAVA_TOOL_OPTIONS: -Xmx192m
+
+  api-gateway:
+    <<: *java-service
+    image: ${IMAGE_PREFIX}/vsl-api-gateway:${IMAGE_TAG:-latest}
+    container_name: vsl-gateway
+    environment:
+      <<: *common-env
+      JAVA_TOOL_OPTIONS: -Xmx384m
+    depends_on: [eureka-server, config-server]
+
+  # ---------- Service nghiệp vụ ----------
+  identity-service:
+    <<: *java-service
+    image: ${IMAGE_PREFIX}/vsl-identity-service:${IMAGE_TAG:-latest}
+    container_name: vsl-identity
+    environment:
+      <<: [*common-env, *storage-env]
+      DB_URL: jdbc:postgresql://postgres:5432/vsl_identity
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      RESEND_FROM_EMAIL: "${RESEND_FROM_EMAIL:-SignMentor <onboarding@resend.dev>}"
+      APP_FRONTEND_URL: https://${DOMAIN}
+      JAVA_TOOL_OPTIONS: -Xmx512m
+    depends_on:
+      minio: { condition: service_started }
+      postgres: { condition: service_healthy }
+      eureka-server: { condition: service_started }
+      config-server: { condition: service_started }
+
+  learning-service:
+    <<: *java-service
+    image: ${IMAGE_PREFIX}/vsl-learning-service:${IMAGE_TAG:-latest}
+    container_name: vsl-learning
+    environment:
+      <<: [*common-env, *storage-env]
+      DB_URL: jdbc:postgresql://postgres:5432/vsl_learning
+      JAVA_TOOL_OPTIONS: -Xmx512m
+    depends_on:
+      minio: { condition: service_started }
+      postgres: { condition: service_healthy }
+      eureka-server: { condition: service_started }
+      config-server: { condition: service_started }
+
+  social-service:
+    <<: *java-service
+    image: ${IMAGE_PREFIX}/vsl-social-service:${IMAGE_TAG:-latest}
+    container_name: vsl-social
+    environment:
+      <<: [*common-env, *storage-env]
+      DB_URL: jdbc:postgresql://postgres:5432/vsl_social
+      MODERATION_FAIL_OPEN: ${MODERATION_FAIL_OPEN:-false}
+      APP_FRONTEND_URL: https://${DOMAIN}
+      JAVA_TOOL_OPTIONS: -Xmx512m
+    depends_on:
+      minio: { condition: service_started }
+      postgres: { condition: service_healthy }
+      eureka-server: { condition: service_started }
+      config-server: { condition: service_started }
+
+  # ai-service: không DB; model ONNX (~135MB) chép lên máy ảo một lần vào ./models.
+  ai-service:
+    <<: *java-service
+    image: ${IMAGE_PREFIX}/vsl-ai-service:${IMAGE_TAG:-latest}
+    container_name: vsl-ai
+    environment:
+      <<: *common-env
+      AI_MODEL_PATH: /app/models/mvitv2_small.onnx
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      JAVA_TOOL_OPTIONS: -Xmx1536m
+    volumes:
+      - ./models:/app/models:ro
+    depends_on: [eureka-server, config-server]
+
+volumes:
+  pgdata:
+  miniodata:
+  caddydata:
+  caddyconfig:
+
+networks:
+  vsl-net:
+    driver: bridge

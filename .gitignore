@@ -53,3 +53,6 @@ docs/
 !README.md
 !ADMIN_API_DOCUMENTATION.md
 
+
+# ===== Deploy =====
+deploy/.export/
