@@ -52,7 +52,13 @@ jobs:
           build() {  # $1 = tên image, $2 = thư mục build
             docker build -t "$PREFIX/vsl-$1:$TAG" -t "$PREFIX/vsl-$1:latest" \
               --label org.opencontainers.image.source="https://github.com/${GITHUB_REPOSITORY}" "$2"
-            docker push --all-tags "$PREFIX/vsl-$1"
+            # GHCR đôi khi trả "denied" lúc vừa tạo package mới (lần đẩy đầu tiên) -> thử lại vài lần.
+            for attempt in 1 2 3 4 5; do
+              docker push --all-tags "$PREFIX/vsl-$1" && return 0
+              echo "::warning::Đẩy vsl-$1 thất bại (lần $attempt), thử lại sau $((attempt * 15))s"
+              sleep $((attempt * 15))
+            done
+            return 1
           }
           for svc in eureka-server config-server api-gateway identity-service learning-service social-service ai-service; do
             build "$svc" "./$svc"
