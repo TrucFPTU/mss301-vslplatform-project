@@ -77,10 +77,17 @@ jobs:
         run: echo "::warning::Chưa đặt secret VM_HOST — chỉ build image, không deploy."
       - name: Chuẩn bị SSH
         if: env.VM_HOST != ''
+        env:
+          VM_SSH_KEY: ${{ secrets.VM_SSH_KEY }}
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.VM_SSH_KEY }}" > ~/.ssh/id_vm
+          # Khóa dán từ Notepad (Windows) có \r -> OpenSSH báo "error in libcrypto". Bỏ \r, đảm bảo có xuống dòng cuối.
+          printf '%s\n' "$VM_SSH_KEY" | tr -d '\r' > ~/.ssh/id_vm
           chmod 600 ~/.ssh/id_vm
+          if ! ssh-keygen -y -f ~/.ssh/id_vm > /dev/null; then
+            echo "::error::Secret VM_SSH_KEY không phải khóa SSH hợp lệ - dán lại TOÀN BỘ file .pem (cả dòng BEGIN/END)."
+            exit 1
+          fi
           ssh-keyscan -H "$VM_HOST" >> ~/.ssh/known_hosts
       - name: Chép cấu hình + khởi động lại
         if: env.VM_HOST != ''
