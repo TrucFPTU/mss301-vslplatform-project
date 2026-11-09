@@ -22,9 +22,14 @@ public class AssistantContextResponse {
     private final List<VocabularyItem> vocabularies;
     private final List<Recommendation> recommendations;
 
-    /** status: NEW (chưa luyện) / LEARNING (đã luyện, chưa đúng) / LEARNED. */
+    /**
+     * status: NEW (chưa luyện) / LEARNING (đã luyện, chưa đúng) / LEARNED.
+     * attemptCount / correctCount: số lượt luyện / lượt đúng của người hỏi trên từ này (0 nếu chưa luyện).
+     * daysSinceLastPractice: số ngày kể từ lần luyện gần nhất (null nếu chưa luyện).
+     */
     public record VocabularyItem(Long id, String word, Long categoryId, String categoryName, String imageUrl,
-                                 boolean practicable, String status) {
+                                 boolean practicable, String status, long attemptCount, long correctCount,
+                                 Integer daysSinceLastPractice) {
     }
 
     public record CategoryItem(Long id, String name, int vocabularyCount, int learnedCount, int learningCount) {
