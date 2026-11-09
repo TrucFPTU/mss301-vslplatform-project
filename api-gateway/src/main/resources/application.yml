@@ -37,7 +37,7 @@ spring:
             - id: social-service
               uri: lb://social-service
               predicates:
-                - Path=/api/blogs/**,/api/comments/**,/api/follows/**,/api/notifications/**
+                - Path=/api/blogs/**,/api/comments/**,/api/follows/**,/api/notifications/**,/api/messages/**
 
 eureka:
   client:
