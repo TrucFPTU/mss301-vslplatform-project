@@ -13,8 +13,8 @@ import java.util.List;
  * minio:
  *   endpoint: http://minio:9000           # địa chỉ service gọi tới (trong mạng Docker)
  *   public-endpoint: http://localhost:9000 # địa chỉ trình duyệt dùng để xem file
- *   access-key: minioadmin
- *   secret-key: minioadmin
+ *   access-key: ${MINIO_USER}              # lấy từ .env
+ *   secret-key: ${MINIO_PASSWORD}
  *   buckets: [avatars]                     # bucket service này sở hữu, tự tạo + public-read khi khởi động
  * </pre>
  */

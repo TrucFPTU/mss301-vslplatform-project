@@ -5,7 +5,8 @@ spring:
   application:
     name: ai-service
   config:
-    import: "optional:configserver:${CONFIG_URI:http://localhost:8888}"
+    # Chạy local (mvn spring-boot:run / IDE) tự đọc bí mật từ .env ở thư mục gốc; trong Docker không có file nên bỏ qua.
+    import: "optional:configserver:${CONFIG_URI:http://localhost:8888},optional:file:.env[.properties],optional:file:../.env[.properties]"
   # Chấm điểm / chuyển mã trả CompletableFuture: mặc định Spring chỉ đợi ~30s, suy luận ONNX trên CPU (nhất là
   # lần đầu nạp model) lâu hơn -> bị cắt thành lỗi. Khớp read-timeout 120s phía learning-service.
   mvc:
@@ -19,7 +20,7 @@ spring:
 
 security:
   jwt:
-    secret: ${JWT_SECRET:dGhpcy1pcy1hLXZlcnktbG9uZy1kZXZlbG9wbWVudC1zZWNyZXQta2V5LWZvci1oczI1Ni1hbGdvcml0aG0tMTIzNDU2}
+    secret: ${JWT_SECRET}
     access-token-ttl-minutes: 30
     refresh-token-ttl-days: 7
 
