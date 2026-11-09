@@ -122,7 +122,8 @@ public class AiServiceClient {
                     .retrieve()
                     .body(byte[].class);
             if (bytes == null || bytes.length == 0) {
-                throw new AppException(ErrorCode.VIDEO_CORRUPT, "ai-service trả về video rỗng sau khi chuyển mã");
+                log.warn("ai-service trả về video rỗng sau khi chuyển mã");
+                throw new AppException(ErrorCode.VIDEO_CORRUPT);
             }
             return bytes;
         } catch (RestClientResponseException e) {

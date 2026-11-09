@@ -1,12 +1,12 @@
 package com.vsl.learning.dto.response;
 
 /**
- * Số liệu trang chủ (giữ đúng tên khóa JSON của monolith: totalUsers, totalVocabs, satisfactionRate).
- * totalUsers = null khi identity-service tạm không phản hồi.
+ * Số liệu trang chủ - toàn bộ là số thật (bỏ "tỉ lệ hài lòng" hằng số của monolith).
+ * totalStudents = số tài khoản học viên (role USER); null khi identity-service tạm không phản hồi.
  */
 public record PublicStatsResponse(
-        Long totalUsers,
+        Long totalStudents,
         long totalVocabs,
-        int satisfactionRate
+        long totalCategories
 ) {
 }
