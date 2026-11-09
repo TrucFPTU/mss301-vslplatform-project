@@ -64,6 +64,8 @@ public class LearningAssistantServiceImpl implements LearningAssistantService {
             - Hỏi hay sai từ nào / điểm yếu: dùng TỪ HAY SAI NHẤT và số lượt từng từ trong TỪ VỰNG (nêu số lượt sai/tổng
               lượt), gợi ý ôn lại các từ đó.
             - "Đã thuộc" = đã ký đúng trong Phòng tập; "đang học" = đã luyện nhưng chưa ký đúng.
+            - Kết quả chấm của AI chỉ có 3 mức: Đúng, Gần đúng, Sai. KHÔNG nói phần trăm đúng/sai hay độ tin cậy;
+              nói về số lượt (vd. "17/18 lượt đúng"). Phần trăm chỉ dùng cho tiến độ (đã thuộc bao nhiêu % số từ).
             - Không tự mô tả động tác tay của một ký hiệu (dễ sai) - hướng người học xem video mẫu hoặc vào Phòng tập.
             - Hỏi về một từ KHÔNG có trong TỪ VỰNG: nói thật là từ điển chưa có, mời người học gửi ở trang
               "Đề xuất ký hiệu" (bấm thẻ bên dưới) và đặt suggestWord = đúng từ đó. Các trường hợp khác suggestWord = null.
@@ -195,7 +197,7 @@ public class LearningAssistantServiceImpl implements LearningAssistantService {
             sb.append("TIẾN ĐỘ CỦA NGƯỜI HỌC: đã thuộc ").append(s.learnedCount()).append('/').append(s.totalVocabs())
                     .append(" từ luyện được (").append(s.proficiency()).append("%), đang học ").append(learning)
                     .append(" từ; ").append(s.totalAttempts()).append(" lượt luyện, ").append(s.correctAttempts())
-                    .append(" lượt đúng (độ chính xác ").append(s.accuracyRate()).append("%); chuỗi ngày học hiện tại ")
+                    .append(" lượt đúng; chuỗi ngày học hiện tại ")
                     .append(s.currentStreak()).append(" ngày, dài nhất ").append(s.longestStreak())
                     .append(" ngày; 7 ngày qua có luyện ").append(activeDays).append(" ngày.\n");
         }

@@ -15,6 +15,8 @@ public class AttemptResponse {
     private final String categoryName;
     private final Integer expectedId;
     private final Boolean isCorrect;
+    /** CORRECT / ALMOST_CORRECT / INCORRECT - FE chỉ hiện Đúng / Gần đúng / Sai. */
+    private final String status;
     private final Long aiPredictedCode;
     private final Double confidence;
     private final LocalDateTime attemptedAt;
