@@ -52,8 +52,7 @@ public class AuthServiceImpl implements AuthService {
             throw new AppException(ErrorCode.VALIDATION_ERROR, "Tên đăng nhập đã tồn tại");
         }
 
-        String otp = otpService.generateAndStoreOtp(email);
-        emailService.sendOtpEmail(email, otp);
+        sendOtp(email);
         log.info("Đã gửi OTP đăng ký tới email={}", email);
     }
 
@@ -159,9 +158,19 @@ public class AuthServiceImpl implements AuthService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new AppException(ErrorCode.NOT_FOUND, "Không tìm thấy tài khoản với email này"));
 
-        String otp = otpService.generateAndStoreOtp(user.getEmail());
-        emailService.sendOtpEmail(user.getEmail(), otp);
+        sendOtp(user.getEmail());
         log.info("Đã gửi OTP đặt lại mật khẩu tới email={}", user.getEmail());
+    }
+
+    /** Cấp mã rồi gửi email; gửi thất bại thì hủy mã (để người dùng gửi lại được ngay, không vướng thời gian chờ). */
+    private void sendOtp(String email) {
+        String otp = otpService.generateAndStoreOtp(email);
+        try {
+            emailService.sendOtpEmail(email, otp);
+        } catch (RuntimeException e) {
+            otpService.clearOtp(email);
+            throw e;
+        }
     }
 
     @Override

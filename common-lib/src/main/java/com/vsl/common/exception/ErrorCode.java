@@ -28,6 +28,9 @@ public enum ErrorCode {
     INVALID_TOKEN("AUTH_1002", "Token không hợp lệ hoặc đã hết hạn", HttpStatus.UNAUTHORIZED),
     INVALID_CREDENTIALS("AUTH_1003", "Sai thông tin đăng nhập", HttpStatus.UNAUTHORIZED),
     INVALID_OTP("AUTH_1004", "Mã OTP không đúng hoặc đã hết hạn", HttpStatus.BAD_REQUEST),
+    OTP_ATTEMPTS_EXCEEDED("AUTH_1005", "Bạn đã nhập sai mã quá nhiều lần. Hãy bấm gửi lại để nhận mã mới.", HttpStatus.TOO_MANY_REQUESTS),
+    OTP_RESEND_TOO_SOON("AUTH_1006", "Mã vừa được gửi, vui lòng chờ một chút rồi mới gửi lại.", HttpStatus.TOO_MANY_REQUESTS),
+    EMAIL_SEND_FAILED("AUTH_1007", "Không gửi được email lúc này. Hãy kiểm tra lại địa chỉ email hoặc thử lại sau.", HttpStatus.SERVICE_UNAVAILABLE),
 
     // ---- Learning ----
     VOCABULARY_ALREADY_EXISTS("LEARNING_2001", "Từ vựng đã tồn tại", HttpStatus.CONFLICT),
