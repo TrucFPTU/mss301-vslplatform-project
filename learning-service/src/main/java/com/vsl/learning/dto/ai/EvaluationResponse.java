@@ -20,6 +20,8 @@ import lombok.NoArgsConstructor;
 public class EvaluationResponse {
 
     public static final String STATUS_CORRECT = "CORRECT";
+    public static final String STATUS_ALMOST_CORRECT = "ALMOST_CORRECT";
+    public static final String STATUS_INCORRECT = "INCORRECT";
 
     /** CORRECT | ALMOST_CORRECT | INCORRECT */
     private String status;

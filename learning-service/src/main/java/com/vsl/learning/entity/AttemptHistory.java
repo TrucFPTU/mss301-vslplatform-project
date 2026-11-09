@@ -30,6 +30,13 @@ public class AttemptHistory {
     @Column(name = "is_correct")
     private Boolean isCorrect;
 
+    /**
+     * Mức chấm của AI: CORRECT / ALMOST_CORRECT / INCORRECT (định nghĩa ở ai-service, giống monolith).
+     * Lượt cũ trước khi có cột này = null -> suy từ isCorrect (xem AttemptServiceImpl).
+     */
+    @Column(name = "result_status", length = 20)
+    private String resultStatus;
+
     @Column(name = "ai_predicted_code")
     private Long aiPredictedCode;
 

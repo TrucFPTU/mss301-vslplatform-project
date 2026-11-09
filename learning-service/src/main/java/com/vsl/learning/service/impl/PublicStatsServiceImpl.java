@@ -3,6 +3,7 @@ package com.vsl.learning.service.impl;
 import com.vsl.learning.client.IdentityServiceClient;
 import com.vsl.learning.dto.remote.RemoteUserStats;
 import com.vsl.learning.dto.response.PublicStatsResponse;
+import com.vsl.learning.repository.CategoryRepository;
 import com.vsl.learning.repository.VocabularyRepository;
 import com.vsl.learning.service.PublicStatsService;
 import lombok.RequiredArgsConstructor;
@@ -14,10 +15,8 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class PublicStatsServiceImpl implements PublicStatsService {
 
-    /** Hằng số hiển thị trên landing page (giữ nguyên bản gốc). */
-    private static final int SATISFACTION_RATE = 98;
-
     private final VocabularyRepository vocabularyRepository;
+    private final CategoryRepository categoryRepository;
     private final IdentityServiceClient identityServiceClient;
 
     @Override
@@ -25,8 +24,8 @@ public class PublicStatsServiceImpl implements PublicStatsService {
     public PublicStatsResponse getLandingStats() {
         RemoteUserStats userStats = identityServiceClient.getUserStats();
         return new PublicStatsResponse(
-                userStats != null ? userStats.totalUsers() : null,
+                userStats != null ? userStats.totalStudents() : null,
                 vocabularyRepository.count(),
-                SATISFACTION_RATE);
+                categoryRepository.count());
     }
 }

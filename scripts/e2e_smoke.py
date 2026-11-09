@@ -266,7 +266,7 @@ check('Đề xuất từ đã có -> 409', s == 409, (s, b))
 
 # ---------------- Thống kê tổng hợp (gọi chéo service) ----------------
 s, b = call('GET', '/api/public/stats')
-check('Public stats (learning gọi identity)', s == 200 and data((s, b))['totalUsers'] is not None, (s, b))
+check('Public stats (learning gọi identity)', s == 200 and data((s, b))['totalStudents'] is not None and data((s, b))['totalCategories'] > 0, (s, b))
 call('POST', '/api/visits/track', None)
 time.sleep(1)
 s, b = call('GET', '/api/visits/admin/summary', admin)
