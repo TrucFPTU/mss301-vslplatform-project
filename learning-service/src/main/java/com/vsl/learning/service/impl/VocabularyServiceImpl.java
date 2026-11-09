@@ -13,6 +13,7 @@ import com.vsl.learning.dto.response.VocabularySynonymResponse;
 import com.vsl.learning.entity.Category;
 import com.vsl.learning.entity.Vocabulary;
 import com.vsl.learning.repository.AttemptHistoryRepository;
+import com.vsl.learning.repository.UserFavoriteRepository;
 import com.vsl.learning.repository.UserProgressRepository;
 import com.vsl.learning.repository.VocabularyRepository;
 import com.vsl.learning.service.CategoryService;
@@ -44,6 +45,7 @@ public class VocabularyServiceImpl implements VocabularyService {
     private final VocabularyRepository vocabularyRepository;
     private final UserProgressRepository userProgressRepository;
     private final AttemptHistoryRepository attemptHistoryRepository;
+    private final UserFavoriteRepository userFavoriteRepository;
     private final CategoryService categoryService;
     private final MediaStorage mediaStorage;
     private final AiServiceClient aiServiceClient;
@@ -105,6 +107,8 @@ public class VocabularyServiceImpl implements VocabularyService {
             throw new AppException(ErrorCode.VALIDATION_ERROR,
                     "Không thể xoá từ vựng vì đã có lịch sử luyện tập hoặc tiến trình học gắn với từ này");
         }
+        // Yêu thích chỉ là đánh dấu cá nhân -> không chặn xóa, dọn theo.
+        userFavoriteRepository.deleteByVocabularyId(id);
         vocabularyRepository.delete(vocabulary);
         mediaStorage.deleteAfterCommit(MediaStorage.TUTORIAL_BUCKET, vocabulary.getVideoTutorialUrl());
         mediaStorage.deleteAfterCommit(MediaStorage.VOCABULARY_IMAGE_BUCKET, vocabulary.getImageUrl());

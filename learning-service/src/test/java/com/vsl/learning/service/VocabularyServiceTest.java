@@ -9,6 +9,7 @@ import com.vsl.learning.dto.response.VocabularySynonymResponse;
 import com.vsl.learning.entity.Category;
 import com.vsl.learning.entity.Vocabulary;
 import com.vsl.learning.repository.AttemptHistoryRepository;
+import com.vsl.learning.repository.UserFavoriteRepository;
 import com.vsl.learning.repository.UserProgressRepository;
 import com.vsl.learning.repository.VocabularyRepository;
 import com.vsl.learning.service.impl.MediaStorage;
@@ -47,6 +48,8 @@ class VocabularyServiceTest {
     UserProgressRepository userProgressRepository;
     @Mock
     AttemptHistoryRepository attemptHistoryRepository;
+    @Mock
+    UserFavoriteRepository userFavoriteRepository;
     @Mock
     CategoryService categoryService;
     @Mock
@@ -160,5 +163,27 @@ class VocabularyServiceTest {
     void checkWordExists_foundIgnoringAccents() {
         assertThat(service.checkWordExists("CON CHUOT").exists()).isTrue();
         assertThat(service.checkWordExists("con mèo").exists()).isFalse();
+    }
+
+    @Test
+    void delete_removesFavoritesThenVocabulary() {
+        Vocabulary v = vocab(5L, "con chuột", 7);
+        when(vocabularyRepository.findWithCategoryById(5L)).thenReturn(Optional.of(v));
+
+        service.delete(5L);
+
+        var order = org.mockito.Mockito.inOrder(userFavoriteRepository, vocabularyRepository);
+        order.verify(userFavoriteRepository).deleteByVocabularyId(5L);
+        order.verify(vocabularyRepository).delete(v);
+    }
+
+    @Test
+    void delete_withPracticeHistory_isBlockedAndKeepsFavorites() {
+        when(vocabularyRepository.findWithCategoryById(5L)).thenReturn(Optional.of(vocab(5L, "con chuột", 7)));
+        when(attemptHistoryRepository.existsByVocabulary_Id(5L)).thenReturn(true);
+
+        assertThatThrownBy(() -> service.delete(5L)).isInstanceOf(AppException.class);
+        verify(userFavoriteRepository, never()).deleteByVocabularyId(any());
+        verify(vocabularyRepository, never()).delete(any());
     }
 }
