@@ -207,7 +207,7 @@ public class SignLanguageInferenceServiceImpl implements SignLanguageInferenceSe
             throw e;
         } catch (Exception e) {
             log.error("Evaluation failed for expectedId={}: {}", expectedId, e.getMessage(), e);
-            throw new AppException(ErrorCode.AI_INFERENCE_ERROR, "Không thể xử lý video: " + e.getMessage());
+            throw new AppException(ErrorCode.AI_INFERENCE_ERROR);
         } finally {
             // BAT BUOC: xoa file tam de bao ve quyen rieng tu
             if (tempFile != null && tempFile.exists()) {
@@ -245,8 +245,9 @@ public class SignLanguageInferenceServiceImpl implements SignLanguageInferenceSe
             } catch (AppException e) {
                 throw e;
             } catch (Exception e) {
-                throw new AppException(ErrorCode.VIDEO_CORRUPT,
-                        "FFmpeg không mở được video: " + e.getMessage());
+                // Chi tiết kỹ thuật chỉ ghi log; người học thấy thông báo dễ hiểu của VIDEO_CORRUPT.
+                log.warn("FFmpeg không mở được video luyện tập: {}", e.getMessage());
+                throw new AppException(ErrorCode.VIDEO_CORRUPT);
             }
         }
     }

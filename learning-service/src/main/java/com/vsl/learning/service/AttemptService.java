@@ -16,5 +16,5 @@ public interface AttemptService {
      * Ghi kết quả 1 lần luyện tập (do ai-service chấm): lưu AttemptHistory,
      * cập nhật UserProgress rồi kiểm tra mở khoá thành tựu — trong cùng 1 transaction.
      */
-    void recordAttempt(Long userId, Vocabulary vocabulary, boolean passed, int predictedId, double confidence);
+    void recordAttempt(Long userId, Vocabulary vocabulary, String status, int predictedId, double confidence);
 }

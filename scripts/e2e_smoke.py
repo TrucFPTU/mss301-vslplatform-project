@@ -15,7 +15,19 @@ import uuid
 import zlib
 
 GW = os.environ.get('E2E_GATEWAY', 'http://localhost:8080')
-DEV_JWT_SECRET = 'dGhpcy1pcy1hLXZlcnktbG9uZy1kZXZlbG9wbWVudC1zZWNyZXQta2V5LWZvci1oczI1Ni1hbGdvcml0aG0tMTIzNDU2'
+
+
+def load_jwt_secret():
+    """JWT_SECRET lấy từ biến môi trường, không có thì đọc file .env ở thư mục gốc repo."""
+    if os.environ.get('JWT_SECRET'):
+        return os.environ['JWT_SECRET'].strip()
+    env_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '.env')
+    if os.path.exists(env_file):
+        with open(env_file, encoding='utf-8') as f:
+            for line in f:
+                if line.startswith('JWT_SECRET='):
+                    return line.split('=', 1)[1].strip()
+    raise SystemExit('Thiếu JWT_SECRET: đặt biến môi trường hoặc điền vào .env')
 
 
 def mint_jwt(secret, uid, name, role):
@@ -133,7 +145,7 @@ check('Sai kiểu tham số -> 400 (không còn 500)', s == 400, (s, b))
 # Admin: mặc định đăng nhập admin/admin123 (DB trống được seed). DB đã có admin (vd dữ liệu chuyển từ monolith):
 # đặt E2E_ADMIN_USER/E2E_ADMIN_PASS, hoặc E2E_ADMIN_ID để tự ký token bằng JWT_SECRET (chỉ môi trường dev).
 if os.environ.get('E2E_ADMIN_ID'):
-    secret = base64.b64decode(os.environ.get('JWT_SECRET', DEV_JWT_SECRET))
+    secret = base64.b64decode(load_jwt_secret())
     admin = mint_jwt(secret, int(os.environ['E2E_ADMIN_ID']), 'admin', 'ADMIN')
     check('Token admin (tự ký, dev)', True)
 else:
@@ -254,7 +266,7 @@ check('Đề xuất từ đã có -> 409', s == 409, (s, b))
 
 # ---------------- Thống kê tổng hợp (gọi chéo service) ----------------
 s, b = call('GET', '/api/public/stats')
-check('Public stats (learning gọi identity)', s == 200 and data((s, b))['totalUsers'] is not None, (s, b))
+check('Public stats (learning gọi identity)', s == 200 and data((s, b))['totalStudents'] is not None and data((s, b))['totalCategories'] > 0, (s, b))
 call('POST', '/api/visits/track', None)
 time.sleep(1)
 s, b = call('GET', '/api/visits/admin/summary', admin)

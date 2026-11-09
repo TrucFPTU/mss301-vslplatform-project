@@ -38,9 +38,9 @@ class LearningAssistantServiceTest {
     private static final LearningContext CONTEXT = new LearningContext(2, 3, 2,
             new Stats(10, 6, 1, 2, 60.0, 50, 3, 5, List.of(false, false, true, true, false, true, true)),
             List.of(new CategoryItem(1L, "Chào hỏi", 2, 1, 1), new CategoryItem(2L, "Gia đình", 1, 0, 0)),
-            List.of(new VocabularyItem(11L, "xin chào", 1L, "Chào hỏi", "http://img/11", true, "LEARNED"),
-                    new VocabularyItem(12L, "tạm biệt", 1L, "Chào hỏi", null, true, "LEARNING"),
-                    new VocabularyItem(13L, "bố", 2L, "Gia đình", null, false, "NEW")),
+            List.of(new VocabularyItem(11L, "xin chào", 1L, "Chào hỏi", "http://img/11", true, "LEARNED", 3, 2, 0),
+                    new VocabularyItem(12L, "tạm biệt", 1L, "Chào hỏi", null, true, "LEARNING", 7, 0, 4),
+                    new VocabularyItem(13L, "bố / cha (gia đình)", 2L, "Gia đình", null, false, "NEW", 0, 0, null)),
             List.of(new Recommendation(12L, "tạm biệt", "Bạn đã luyện nhưng chưa ký đúng — nên ôn lại")));
 
     /** GeminiClient thật (để readTree / parseCandidateJson chạy thật), chỉ thay phần gọi mạng. */
@@ -96,7 +96,10 @@ class LearningAssistantServiceTest {
                 .contains("2 chủ đề, 3 từ vựng")
                 .contains("đã thuộc 1/2 từ luyện được (50%), đang học 1 từ")
                 .contains("7 ngày qua có luyện 4 ngày")
-                .contains("12 | tạm biệt | Chào hỏi | đang học | có")
+                .contains("12 | tạm biệt | Chào hỏi | đang học | có | 7 lượt, đúng 0, sai 7, lần cuối 4 ngày trước")
+                .contains("11 | xin chào | Chào hỏi | đã thuộc | có | 3 lượt, đúng 2, sai 1, lần cuối hôm nay")
+                .contains("13 | bố / cha (gia đình) | Gia đình | chưa học | không | chưa luyện")
+                .contains("TỪ HAY SAI NHẤT CỦA NGƯỜI HỌC (id | từ | số lượt sai / tổng lượt):\n12 | tạm biệt | 7/7\n11 | xin chào | 1/3\n")
                 .contains("12 | tạm biệt | Bạn đã luyện nhưng chưa ký đúng")
                 .contains("<<<HỘI_THOẠI>>>\nNGƯỜI HỌC: Hệ thống có bao nhiêu bài?\n<<<HẾT_HỘI_THOẠI>>>");
     }
@@ -159,5 +162,35 @@ class LearningAssistantServiceTest {
         assertThat(trimmed).hasSize(LearningAssistantServiceImpl.MAX_HISTORY);
         assertThat(trimmed.get(0).content()).isEqualTo("m5");
         assertThat(trimmed.get(9).content()).hasSize(LearningAssistantServiceImpl.MAX_MESSAGE_CHARS);
+    }
+
+    @Test
+    @DisplayName("Từ chưa có trong từ điển -> thêm thẻ SUGGEST_WORD (bỏ ngoặc kép, chuẩn hóa khoảng trắng)")
+    void chat_SuggestWordCard() {
+        when(learningClient.getAssistantContext(AUTH)).thenReturn(CONTEXT);
+        LearningAssistantServiceImpl service = new LearningAssistantServiceImpl(
+                gemini("{\"reply\":\"Từ điển chưa có.\",\"vocabularyIds\":[],\"categoryIds\":[],\"suggestWord\":\" “máy   bay” \"}", true),
+                learningClient);
+
+        ChatResponse res = service.chat(1L, AUTH, ask("Từ máy bay có không?"));
+
+        assertThat(res.cards()).singleElement().satisfies(c -> {
+            assertThat(c.type()).isEqualTo("SUGGEST_WORD");
+            assertThat(c.id()).isNull();
+            assertThat(c.title()).isEqualTo("máy bay");
+        });
+    }
+
+    @Test
+    @DisplayName("suggestWord đã có (so bỏ dấu, từng nghĩa a / b, bỏ phần trong ngoặc) hoặc không hợp lệ -> không có thẻ")
+    void suggestWordCard_SkipsExistingOrInvalid() {
+        assertThat(LearningAssistantServiceImpl.suggestWordCard(CONTEXT, "Xin Chao")).isEmpty();
+        assertThat(LearningAssistantServiceImpl.suggestWordCard(CONTEXT, "cha")).isEmpty();
+        assertThat(LearningAssistantServiceImpl.suggestWordCard(CONTEXT, "bố")).isEmpty();
+        assertThat(LearningAssistantServiceImpl.suggestWordCard(CONTEXT, "<script>")).isEmpty();
+        assertThat(LearningAssistantServiceImpl.suggestWordCard(CONTEXT, "x".repeat(51))).isEmpty();
+        assertThat(LearningAssistantServiceImpl.suggestWordCard(CONTEXT, "  ")).isEmpty();
+        assertThat(LearningAssistantServiceImpl.suggestWordCard(CONTEXT, null)).isEmpty();
+        assertThat(LearningAssistantServiceImpl.suggestWordCard(CONTEXT, "cảm ơn")).isPresent();
     }
 }

@@ -30,9 +30,18 @@ public final class VietnameseText {
         return n.trim().replaceAll("\\s+", " ").toLowerCase();
     }
 
-    /** Chuẩn hóa để LƯU/HIỂN THỊ: chỉ trim và gom khoảng trắng, giữ nguyên dấu. */
+    /**
+     * Chuẩn hóa tên từ vựng để LƯU/HIỂN THỊ (giữ nguyên dấu): trim, gom khoảng trắng, bỏ khoảng trắng thừa trong
+     * ngoặc và đặt đúng một khoảng trắng hai bên dấu "/".
+     * Ví dụ: "nghé ( trâu con )" -> "nghé (trâu con)", "miếng/ bún" -> "miếng / bún".
+     */
     public static String normalize(String word) {
-        return word == null ? "" : word.trim().replaceAll("\\s+", " ");
+        if (word == null) return "";
+        return word.trim().replaceAll("\\s+", " ")
+                .replaceAll("\\(\\s+", "(")
+                .replaceAll("\\s+\\)", ")")
+                .replaceAll("\\s*/\\s*", " / ")
+                .trim();
     }
 
     /**

@@ -56,8 +56,8 @@ public class PracticeServiceImpl implements PracticeService {
 
         // Ghi lịch sử là phần phụ: lỗi DB không được làm mất kết quả chấm điểm của người dùng.
         try {
-            boolean passed = EvaluationResponse.STATUS_CORRECT.equals(result.getStatus());
-            attemptService.recordAttempt(userId, vocabulary, passed, result.getPredictedId(), result.getConfidence());
+            attemptService.recordAttempt(userId, vocabulary, result.getStatus(), result.getPredictedId(),
+                    result.getConfidence());
         } catch (Exception e) {
             log.warn("Không lưu được lịch sử luyện tập userId={}, expectedId={}: {}",
                     userId, expectedId, e.getMessage());

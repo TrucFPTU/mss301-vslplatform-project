@@ -35,8 +35,9 @@ scp "$ROOT/models/mvitv2_small.onnx" "$VM:$REMOTE/models/"
 
 # ---------- Xuất dữ liệu local ----------
 LOCAL_DB_USER=$(envget DB_USERNAME "$ROOT/.env"); LOCAL_DB_USER=${LOCAL_DB_USER:-vsl}
-LOCAL_MINIO_USER=$(envget MINIO_USER "$ROOT/.env"); LOCAL_MINIO_USER=${LOCAL_MINIO_USER:-minioadmin}
-LOCAL_MINIO_PASS=$(envget MINIO_PASSWORD "$ROOT/.env"); LOCAL_MINIO_PASS=${LOCAL_MINIO_PASS:-minioadmin}
+LOCAL_MINIO_USER=$(envget MINIO_USER "$ROOT/.env")
+LOCAL_MINIO_PASS=$(envget MINIO_PASSWORD "$ROOT/.env")
+[ -n "$LOCAL_MINIO_USER" ] && [ -n "$LOCAL_MINIO_PASS" ] || { echo "!! Thiếu MINIO_USER/MINIO_PASSWORD trong .env local"; exit 1; }
 OLD_MEDIA=$(envget MINIO_PUBLIC_ENDPOINT "$ROOT/.env"); OLD_MEDIA=${OLD_MEDIA:-http://localhost:9000}
 TMP="$ROOT/deploy/.export"
 rm -rf "$TMP" && mkdir -p "$TMP"

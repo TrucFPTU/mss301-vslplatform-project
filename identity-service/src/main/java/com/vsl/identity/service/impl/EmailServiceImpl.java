@@ -1,5 +1,8 @@
 package com.vsl.identity.service.impl;
 
+import com.vsl.common.exception.AppException;
+import com.vsl.common.exception.ErrorCode;
+
 import com.vsl.identity.service.EmailService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -34,12 +37,12 @@ public class EmailServiceImpl implements EmailService {
 
     private final RestTemplate restTemplate = new RestTemplate();
 
-    @Async
+    /** Gửi ĐỒNG BỘ: gửi không được thì báo lỗi EMAIL_SEND_FAILED để người dùng biết, không báo "đã gửi" sai sự thật. */
     @Override
     public void sendOtpEmail(String toEmail, String otp) {
         if (resendApiKey == null || resendApiKey.isBlank()) {
-            log.warn("Chưa cấu hình RESEND_API_KEY - bỏ qua gửi email OTP cho {}.", toEmail);
-            return;
+            log.error("Chưa cấu hình RESEND_API_KEY - không gửi được email OTP cho {}.", toEmail);
+            throw new AppException(ErrorCode.EMAIL_SEND_FAILED);
         }
 
         try {
@@ -74,6 +77,7 @@ public class EmailServiceImpl implements EmailService {
             log.info("Đã gửi email OTP thành công đến: {} qua Resend API", toEmail);
         } catch (Exception e) {
             log.error("Lỗi khi gửi email OTP đến {} qua Resend API: {}", toEmail, e.getMessage());
+            throw new AppException(ErrorCode.EMAIL_SEND_FAILED);
         }
     }
 

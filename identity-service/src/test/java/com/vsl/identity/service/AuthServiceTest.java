@@ -171,4 +171,23 @@ class AuthServiceTest {
         assertEquals("new_access_token", response.getAccessToken());
         assertEquals("new_refresh_token", response.getRefreshToken());
     }
+
+    @Test
+    @DisplayName("Gửi email OTP thất bại -> báo EMAIL_SEND_FAILED và hủy mã vừa cấp")
+    void sendRegisterOtp_EmailFails_ClearsOtp() {
+        when(userRepository.existsByEmail("moi@example.com")).thenReturn(false);
+        when(userRepository.existsByUsername("nguoimoi")).thenReturn(false);
+        when(otpService.generateAndStoreOtp("moi@example.com")).thenReturn("123456");
+        org.mockito.Mockito.doThrow(new com.vsl.common.exception.AppException(com.vsl.common.exception.ErrorCode.EMAIL_SEND_FAILED))
+                .when(emailService).sendOtpEmail("moi@example.com", "123456");
+        com.vsl.identity.dto.SendRegisterOtpRequest req = new com.vsl.identity.dto.SendRegisterOtpRequest();
+        req.setUsername("nguoimoi");
+        req.setEmail("Moi@Example.com");
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> authService.sendRegisterOtp(req))
+                .isInstanceOfSatisfying(com.vsl.common.exception.AppException.class,
+                        e -> org.assertj.core.api.Assertions.assertThat(e.getErrorCode())
+                                .isEqualTo(com.vsl.common.exception.ErrorCode.EMAIL_SEND_FAILED));
+        org.mockito.Mockito.verify(otpService).clearOtp("moi@example.com");
+    }
 }

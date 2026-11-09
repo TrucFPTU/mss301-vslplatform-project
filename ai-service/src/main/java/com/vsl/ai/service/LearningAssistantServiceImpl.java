@@ -13,15 +13,19 @@ import com.vsl.ai.dto.AssistantDtos.Stats;
 import com.vsl.ai.dto.AssistantDtos.VocabularyItem;
 import com.vsl.common.exception.AppException;
 import com.vsl.common.exception.ErrorCode;
+import com.vsl.common.text.VietnameseText;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Deque;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -39,25 +43,44 @@ public class LearningAssistantServiceImpl implements LearningAssistantService {
     static final int MAX_MESSAGE_CHARS = 1000;
     static final int MAX_VOCAB_CARDS = 4;
     static final int MAX_CATEGORY_CARDS = 2;
+    static final int MAX_SUGGEST_WORD_CHARS = 50;
+    /** Số từ đưa vào mục TỪ HAY SAI NHẤT. */
+    static final int MAX_MISTAKE_WORDS = 5;
+    static final String SUGGEST_WORD = "SUGGEST_WORD";
     /** Giới hạn mỗi người học: tối đa RATE_LIMIT câu hỏi trong RATE_WINDOW_MS (giữ chi phí Gemini; đếm trong bộ nhớ). */
     static final int RATE_LIMIT = 8;
     static final long RATE_WINDOW_MS = 60_000;
 
     private static final String SYSTEM_PROMPT = """
             Bạn là "Mentor", trợ lý học tập của SignMentor - nền tảng học ngôn ngữ ký hiệu Việt Nam (VSL).
-            Người học hỏi về: hệ thống có bao nhiêu chủ đề / từ vựng, tiến độ của họ, nên học gì tiếp, một ký hiệu cụ thể,
-            hoặc cách dùng ứng dụng (Lộ trình học, Từ điển, Phòng tập: ký trước camera để AI chấm điểm).
+            Người học hỏi về: hệ thống có bao nhiêu chủ đề / từ vựng, tiến độ của họ, nên học gì tiếp, từ nào hay sai,
+            một ký hiệu cụ thể, cách dùng ứng dụng (Lộ trình học, Từ điển, Phòng tập: ký trước camera để AI chấm điểm,
+            Đề xuất ký hiệu: gửi từ còn thiếu cho đội ngũ bổ sung), hoặc kiến thức chung về ngôn ngữ ký hiệu.
             QUY TẮC:
-            - CHỈ dùng số liệu trong phần DỮ LIỆU HỆ THỐNG. Không bịa con số, từ vựng hay chủ đề. Dữ liệu không có thì nói thật.
-            - Hỏi nên học gì: dựa vào danh sách GỢI Ý HỌC TIẾP (đã tính sẵn theo tiến độ), nói ngắn gọn lý do.
+            - Về hệ thống và người học: CHỈ dùng số liệu trong phần DỮ LIỆU HỆ THỐNG. Không bịa con số, từ vựng hay chủ đề.
+              Dữ liệu không có thì nói thật.
+            - Hỏi nên học gì / ôn gì: dựa vào danh sách GỢI Ý HỌC TIẾP (đã tính sẵn theo tiến độ và lịch ôn giãn cách),
+              nói ngắn gọn lý do.
+            - Hỏi hay sai từ nào / điểm yếu: dùng TỪ HAY SAI NHẤT và số lượt từng từ trong TỪ VỰNG (nêu số lượt sai/tổng
+              lượt), gợi ý ôn lại các từ đó.
             - "Đã thuộc" = đã ký đúng trong Phòng tập; "đang học" = đã luyện nhưng chưa ký đúng.
+            - Kết quả chấm của AI chỉ có 3 mức: Đúng, Gần đúng, Sai. KHÔNG nói phần trăm đúng/sai hay độ tin cậy;
+              nói về số lượt (vd. "17/18 lượt đúng"). Phần trăm chỉ dùng cho tiến độ (đã thuộc bao nhiêu % số từ).
             - Không tự mô tả động tác tay của một ký hiệu (dễ sai) - hướng người học xem video mẫu hoặc vào Phòng tập.
-            - Câu hỏi ngoài phạm vi học ký hiệu / ứng dụng: từ chối lịch sự, gợi ý quay lại việc học.
+            - Hỏi về một từ KHÔNG có trong TỪ VỰNG: nói thật là từ điển chưa có, mời người học gửi ở trang
+              "Đề xuất ký hiệu" (bấm thẻ bên dưới) và đặt suggestWord = đúng từ đó. Các trường hợp khác suggestWord = null.
+            - Kiến thức chung về ngôn ngữ ký hiệu (VSL, so sánh với ngôn ngữ ký hiệu nước khác như ASL, lịch sử, ngữ pháp,
+              văn hóa cộng đồng người Điếc, cách giao tiếp với người Điếc, phương pháp học): được trả lời ngắn gọn bằng
+              hiểu biết chung, nói rõ đó là thông tin tham khảo; không nêu con số / năm / tên riêng nếu không chắc chắn;
+              vẫn không mô tả động tác tay của ký hiệu cụ thể. Có thể gợi ý quay lại bài học phù hợp.
+            - Câu hỏi ngoài phạm vi (không liên quan ngôn ngữ ký hiệu, người Điếc, việc học hay ứng dụng): từ chối lịch sự,
+              gợi ý quay lại việc học.
             - Trả lời TIẾNG VIỆT, thân thiện, xưng "mình" gọi "bạn", ngắn gọn (tối đa khoảng 120 từ).
               Không dùng markdown (không **, không #); muốn liệt kê thì xuống dòng và bắt đầu bằng "- ".
             - vocabularyIds: id các từ nên hiện thành thẻ để người học bấm vào (tối đa 4, chỉ id có trong dữ liệu;
               khi gợi ý từ để học hoặc nhắc tới từ cụ thể thì NÊN có). categoryIds: id chủ đề liên quan (tối đa 2).
-            Chỉ trả về JSON: {"reply": "<câu trả lời>", "vocabularyIds": [<id>], "categoryIds": [<id>]}
+            Chỉ trả về JSON: {"reply": "<câu trả lời>", "vocabularyIds": [<id>], "categoryIds": [<id>],
+            "suggestWord": "<từ chưa có>" hoặc null}
             """;
 
     private static final String DATA_RULE = """
@@ -97,7 +120,43 @@ public class LearningAssistantServiceImpl implements LearningAssistantService {
         if (reply.isEmpty()) {
             throw new AppException(ErrorCode.AI_EXTERNAL_ERROR);
         }
-        return new ChatResponse(reply, buildCards(context, ids(answer.path("vocabularyIds")), ids(answer.path("categoryIds"))));
+        List<Card> cards = new ArrayList<>(
+                buildCards(context, ids(answer.path("vocabularyIds")), ids(answer.path("categoryIds"))));
+        JsonNode suggest = answer.path("suggestWord");
+        suggestWordCard(context, suggest.isTextual() ? suggest.asText() : null).ifPresent(cards::add);
+        return new ChatResponse(reply, cards);
+    }
+
+    /**
+     * Thẻ "Đề xuất ký hiệu" cho từ Gemini báo là chưa có. Chỉ nhận chữ cái / khoảng trắng / gạch nối, tối đa
+     * {@value #MAX_SUGGEST_WORD_CHARS} ký tự, và bỏ qua nếu từ thực ra đã có (so bỏ dấu, kể cả từng nghĩa "a / b"
+     * và phần ngoài ngoặc) - tránh mời người học đề xuất từ đã có.
+     */
+    static Optional<Card> suggestWordCard(LearningContext c, String raw) {
+        if (raw == null) return Optional.empty();
+        String word = VietnameseText.normalize(raw.replaceAll("[\"“”'‘’]", ""));
+        if (word.isEmpty() || word.length() > MAX_SUGGEST_WORD_CHARS || !word.matches("[\\p{L}\\p{M} -]+")) {
+            return Optional.empty();
+        }
+        String target = VietnameseText.fold(word);
+        boolean exists = nullSafe(c.vocabularies()).stream()
+                .flatMap(v -> wordVariants(v.word()).stream())
+                .anyMatch(target::equals);
+        return exists ? Optional.empty()
+                : Optional.of(new Card(SUGGEST_WORD, null, word, "Chưa có trong từ điển · bấm để đề xuất", null, false));
+    }
+
+    /** Các cách gọi của một từ để so khớp: cả cụm, từng nghĩa tách bởi "/", và bản bỏ phần trong ngoặc. */
+    private static Set<String> wordVariants(String word) {
+        Set<String> variants = new LinkedHashSet<>();
+        if (word == null) return variants;
+        variants.add(VietnameseText.fold(word));
+        for (String part : word.split("/")) {
+            variants.add(VietnameseText.fold(part));
+            variants.add(VietnameseText.fold(part.replaceAll("\\(.*?\\)", "")));
+        }
+        variants.remove("");
+        return variants;
     }
 
     /** Giữ MAX_HISTORY tin gần nhất, cắt tin quá dài (giới hạn token gửi Gemini). */
@@ -138,7 +197,7 @@ public class LearningAssistantServiceImpl implements LearningAssistantService {
             sb.append("TIẾN ĐỘ CỦA NGƯỜI HỌC: đã thuộc ").append(s.learnedCount()).append('/').append(s.totalVocabs())
                     .append(" từ luyện được (").append(s.proficiency()).append("%), đang học ").append(learning)
                     .append(" từ; ").append(s.totalAttempts()).append(" lượt luyện, ").append(s.correctAttempts())
-                    .append(" lượt đúng (độ chính xác ").append(s.accuracyRate()).append("%); chuỗi ngày học hiện tại ")
+                    .append(" lượt đúng; chuỗi ngày học hiện tại ")
                     .append(s.currentStreak()).append(" ngày, dài nhất ").append(s.longestStreak())
                     .append(" ngày; 7 ngày qua có luyện ").append(activeDays).append(" ngày.\n");
         }
@@ -148,11 +207,26 @@ public class LearningAssistantServiceImpl implements LearningAssistantService {
             sb.append(cat.id()).append(" | ").append(cat.name()).append(" | ").append(cat.vocabularyCount())
                     .append(" | ").append(cat.learnedCount()).append(" | ").append(cat.learningCount()).append('\n');
         }
-        sb.append("TỪ VỰNG (id | từ | chủ đề | trạng thái | luyện bằng camera được?):\n");
+        sb.append("TỪ VỰNG (id | từ | chủ đề | trạng thái | luyện bằng camera được? | lịch sử luyện của người học):\n");
         for (VocabularyItem v : nullSafe(c.vocabularies())) {
             sb.append(v.id()).append(" | ").append(v.word()).append(" | ").append(nullToEmpty(v.categoryName()))
                     .append(" | ").append(statusLabel(v.status())).append(" | ").append(v.practicable() ? "có" : "không")
-                    .append('\n');
+                    .append(" | ").append(practiceHistory(v)).append('\n');
+        }
+        sb.append("TỪ HAY SAI NHẤT CỦA NGƯỜI HỌC (id | từ | số lượt sai / tổng lượt):\n");
+        List<VocabularyItem> mistakes = nullSafe(c.vocabularies()).stream()
+                .filter(v -> v.wrongCount() > 0)
+                .sorted(Comparator.comparingLong(VocabularyItem::wrongCount).reversed()
+                        .thenComparing(Comparator.comparingDouble(
+                                (VocabularyItem v) -> (double) v.wrongCount() / v.attemptCount()).reversed()))
+                .limit(MAX_MISTAKE_WORDS)
+                .toList();
+        if (mistakes.isEmpty()) {
+            sb.append("(chưa ký sai lượt nào)\n");
+        }
+        for (VocabularyItem v : mistakes) {
+            sb.append(v.id()).append(" | ").append(v.word()).append(" | ").append(v.wrongCount()).append('/')
+                    .append(v.attemptCount()).append('\n');
         }
         sb.append("GỢI Ý HỌC TIẾP (id | từ | lý do), theo thứ tự ưu tiên:\n");
         List<Recommendation> recs = nullSafe(c.recommendations());
@@ -198,6 +272,14 @@ public class LearningAssistantServiceImpl implements LearningAssistantService {
             }
         }
         return ids;
+    }
+
+    private static String practiceHistory(VocabularyItem v) {
+        if (v.attemptCount() <= 0) return "chưa luyện";
+        String when = v.daysSinceLastPractice() == null ? ""
+                : v.daysSinceLastPractice() == 0 ? ", lần cuối hôm nay"
+                : ", lần cuối " + v.daysSinceLastPractice() + " ngày trước";
+        return v.attemptCount() + " lượt, đúng " + v.correctCount() + ", sai " + v.wrongCount() + when;
     }
 
     private static String statusLabel(String status) {

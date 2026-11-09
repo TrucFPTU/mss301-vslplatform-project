@@ -28,8 +28,9 @@ public final class AssistantDtos {
     }
 
     /**
-     * Thẻ để người học bấm. type = VOCABULARY (id = vocabularyId) hoặc CATEGORY (id = categoryId).
-     * Chỉ tạo từ id CÓ THẬT trong dữ liệu learning-service, không lấy từ chữ AI viết ra.
+     * Thẻ để người học bấm. type = VOCABULARY (id = vocabularyId), CATEGORY (id = categoryId) - chỉ tạo từ id CÓ THẬT
+     * trong dữ liệu learning-service; hoặc SUGGEST_WORD (id = null, title = từ chưa có trong từ điển) để mở trang
+     * Đề xuất ký hiệu điền sẵn từ đó.
      */
     public record Card(String type, Long id, String title, String subtitle, String imageUrl, boolean practicable) {
     }
@@ -55,10 +56,18 @@ public final class AssistantDtos {
     public record CategoryItem(Long id, String name, int vocabularyCount, int learnedCount, int learningCount) {
     }
 
-    /** status: NEW / LEARNING / LEARNED. */
+    /**
+     * status: NEW / LEARNING / LEARNED. attemptCount / correctCount: lượt luyện / lượt đúng của người hỏi trên từ này;
+     * daysSinceLastPractice: số ngày từ lần luyện gần nhất (null = chưa luyện).
+     */
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record VocabularyItem(Long id, String word, Long categoryId, String categoryName, String imageUrl,
-                                 boolean practicable, String status) {
+                                 boolean practicable, String status, long attemptCount, long correctCount,
+                                 Integer daysSinceLastPractice) {
+
+        public long wrongCount() {
+            return Math.max(0, attemptCount - correctCount);
+        }
     }
 
     @JsonIgnoreProperties(ignoreUnknown = true)

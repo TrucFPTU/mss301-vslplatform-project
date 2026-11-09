@@ -5,7 +5,8 @@ spring:
   application:
     name: api-gateway
   config:
-    import: "optional:configserver:${CONFIG_URI:http://localhost:8888}"
+    # Chạy local (mvn spring-boot:run / IDE) tự đọc bí mật từ .env ở thư mục gốc; trong Docker không có file nên bỏ qua.
+    import: "optional:configserver:${CONFIG_URI:http://localhost:8888},optional:file:.env[.properties],optional:file:../.env[.properties]"
   cloud:
     gateway:
       server:

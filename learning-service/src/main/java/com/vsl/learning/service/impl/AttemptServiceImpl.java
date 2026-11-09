@@ -1,6 +1,7 @@
 package com.vsl.learning.service.impl;
 
 import com.vsl.common.response.PageResponse;
+import com.vsl.learning.dto.ai.EvaluationResponse;
 import com.vsl.learning.dto.response.AttemptResponse;
 import com.vsl.learning.entity.AttemptHistory;
 import com.vsl.learning.entity.Category;
@@ -48,12 +49,14 @@ public class AttemptServiceImpl implements AttemptService {
 
     @Override
     @Transactional
-    public void recordAttempt(Long userId, Vocabulary vocabulary, boolean passed, int predictedId, double confidence) {
+    public void recordAttempt(Long userId, Vocabulary vocabulary, String status, int predictedId, double confidence) {
         LocalDateTime now = LocalDateTime.now();
+        boolean passed = EvaluationResponse.STATUS_CORRECT.equals(status);
         attemptHistoryRepository.save(AttemptHistory.builder()
                 .userId(userId)
                 .vocabulary(vocabulary)
                 .isCorrect(passed)
+                .resultStatus(status)
                 .aiPredictedCode((long) predictedId)
                 .confidence(confidence)
                 .attemptedAt(now)
@@ -85,6 +88,13 @@ public class AttemptServiceImpl implements AttemptService {
         userProgressRepository.save(progress);
     }
 
+    /** Mức chấm của lượt luyện; lượt cũ chưa lưu mức thì suy từ isCorrect (không phân biệt được "gần đúng"). */
+    static String resultStatus(AttemptHistory attempt) {
+        if (attempt.getResultStatus() != null) return attempt.getResultStatus();
+        return Boolean.TRUE.equals(attempt.getIsCorrect())
+                ? EvaluationResponse.STATUS_CORRECT : EvaluationResponse.STATUS_INCORRECT;
+    }
+
     private static AttemptResponse toResponse(AttemptHistory attempt) {
         Vocabulary vocabulary = attempt.getVocabulary();
         Category category = vocabulary != null ? vocabulary.getCategory() : null;
@@ -97,6 +107,7 @@ public class AttemptServiceImpl implements AttemptService {
                 .categoryName(category != null ? category.getName() : null)
                 .expectedId(vocabulary != null ? vocabulary.getExpectedId() : null)
                 .isCorrect(attempt.getIsCorrect())
+                .status(resultStatus(attempt))
                 .aiPredictedCode(attempt.getAiPredictedCode())
                 .confidence(attempt.getConfidence())
                 .attemptedAt(attempt.getAttemptedAt())

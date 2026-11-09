@@ -48,7 +48,8 @@ public class VideoTranscodingServiceImpl implements VideoTranscodingService {
         } catch (AppException e) {
             throw e;
         } catch (Exception e) {
-            throw new AppException(ErrorCode.VIDEO_CORRUPT, "Lỗi khi chuyển mã video: " + e.getMessage());
+            log.warn("Lỗi khi chuyển mã video: {}", e.getMessage());
+            throw new AppException(ErrorCode.VIDEO_CORRUPT);
         } finally {
             deleteQuietly(input);
             deleteQuietly(output);
@@ -60,7 +61,8 @@ public class VideoTranscodingServiceImpl implements VideoTranscodingService {
             try {
                 grabber.start();
             } catch (Exception e) {
-                throw new AppException(ErrorCode.VIDEO_CORRUPT, "Không đọc được video nguồn: " + e.getMessage());
+                log.warn("Không đọc được video nguồn khi chuyển mã: {}", e.getMessage());
+                throw new AppException(ErrorCode.VIDEO_CORRUPT);
             }
             int width = grabber.getImageWidth() & ~1;   // yuv420p cần kích thước chẵn
             int height = grabber.getImageHeight() & ~1;
