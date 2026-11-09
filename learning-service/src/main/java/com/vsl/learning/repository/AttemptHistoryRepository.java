@@ -2,6 +2,7 @@ package com.vsl.learning.repository;
 
 import com.vsl.learning.entity.AttemptHistory;
 import com.vsl.learning.repository.projection.AttemptTrendProjection;
+import com.vsl.learning.repository.projection.UserVocabularyAttemptProjection;
 import com.vsl.learning.repository.projection.VocabularyPracticeProjection;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -56,6 +57,19 @@ public interface AttemptHistoryRepository extends JpaRepository<AttemptHistory, 
             ORDER BY h.attemptedAt ASC
             """)
     List<AttemptTrendProjection> findAttemptsBetween(@Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
+
+    /** Số lượt / số lượt đúng / lần luyện gần nhất / lần đúng gần nhất của một người học trên từng từ (trợ lý học tập). */
+    @Query("""
+            SELECT h.vocabulary.id as vocabularyId,
+                   COUNT(h.id) as attemptCount,
+                   SUM(CASE WHEN h.isCorrect = true THEN 1L ELSE 0L END) as correctCount,
+                   MAX(h.attemptedAt) as lastAttemptAt,
+                   MAX(CASE WHEN h.isCorrect = true THEN h.attemptedAt ELSE NULL END) as lastCorrectAt
+            FROM AttemptHistory h
+            WHERE h.userId = :userId AND h.vocabulary IS NOT NULL
+            GROUP BY h.vocabulary.id
+            """)
+    List<UserVocabularyAttemptProjection> summarizeByVocabularyForUser(@Param("userId") Long userId);
 
     /** Top tu vung duoc luyen tap nhieu nhat. */
     @Query("""
