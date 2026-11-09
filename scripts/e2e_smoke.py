@@ -116,6 +116,7 @@ def cleanup():
         'vsl_social': f'delete from blog_notifications where actor_id in ({ids_sql}) or recipient_id in ({ids_sql});'
                       f'delete from user_follows where follower_id in ({ids_sql}) or followee_id in ({ids_sql});',
         'vsl_learning': f'delete from vocabulary_suggestions where requester_id in ({ids_sql});'
+                        f'delete from user_favorites where user_id in ({ids_sql});'
                         f'delete from visit_logs where user_id in ({ids_sql});'
                         f'delete from user_achievements where user_id in ({ids_sql});'
                         f'delete from user_progress where user_id in ({ids_sql});'
@@ -263,6 +264,27 @@ s, b = call('PUT', f'/api/vocabularies/{vocab_id}', admin, {'categoryId': cat_id
 check('Sửa từ vựng không làm mất ảnh', s == 200 and data((s, b))['imageUrl'], (s, b))
 s, b = call('POST', f'/api/vocabulary-suggestions', A, {'categoryId': cat_id, 'word': f'Xin Chào {tag}'})
 check('Đề xuất từ đã có -> 409', s == 409, (s, b))
+
+# ---------------- Từ yêu thích (lưu server) ----------------
+fav_ids = lambda tok: [v['id'] for v in (data(call('GET', '/api/favorites', tok)) or [])]
+s, b = call('GET', '/api/favorites')
+check('Yêu thích cần đăng nhập', s == 401, (s, b))
+s1, _ = call('PUT', f'/api/favorites/{vocab_id}', A)
+s2, _ = call('PUT', f'/api/favorites/{vocab_id}', A)
+check('Thêm yêu thích (gọi 2 lần vẫn OK, không nhân đôi)', s1 == 200 and s2 == 200 and fav_ids(A).count(vocab_id) == 1, (s1, s2, fav_ids(A)))
+check('Yêu thích của Alice không lộ sang Bob', vocab_id not in fav_ids(B), fav_ids(B))
+s, b = call('PUT', '/api/favorites/999999999', A)
+check('Yêu thích từ không tồn tại -> 404', s == 404, (s, b))
+s, b = call('DELETE', f'/api/favorites/{vocab_id}', A)
+check('Bỏ yêu thích', s == 200 and vocab_id not in fav_ids(A), (s, b))
+s, b = call('POST', '/api/vocabularies', admin, {'categoryId': cat_id, 'word': f'tạm xóa {tag}'})
+tmp_vocab = data((s, b))['id']
+call('PUT', f'/api/favorites/{tmp_vocab}', A)
+s, b = call('DELETE', f'/api/vocabularies/{tmp_vocab}', admin)
+if s != 200:
+    created['vocabs'].append(tmp_vocab)
+check('Xóa từ vựng đang được yêu thích -> xóa được, mất khỏi yêu thích', s == 200 and tmp_vocab not in fav_ids(A), (s, b))
+call('PUT', f'/api/favorites/{vocab_id}', A)  # để lại 1 yêu thích -> cleanup xóa từ vựng có yêu thích
 
 # ---------------- Thống kê tổng hợp (gọi chéo service) ----------------
 s, b = call('GET', '/api/public/stats')
