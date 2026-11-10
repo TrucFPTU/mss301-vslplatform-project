@@ -28,6 +28,11 @@ public interface BlogRepository extends JpaRepository<Blog, Long> {
     // Cộng dồn trực tiếp trong DB để không mất lượt khi nhiều request cùng lúc.
     // clearAutomatically: entity đã load trước đó sẽ bị detach — đọc lại nếu cần số mới.
 
+    /** Ẩn mọi bài chưa bị gỡ của tác giả (đã xóa tài khoản); bài admin gỡ từ trước giữ nguyên lý do. */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("update Blog b set b.status = :hidden, b.deletionReason = :reason where b.authorId = :id and b.status <> :hidden")
+    int hideAllByAuthor(@Param("id") Long id, @Param("hidden") BlogStatus hidden, @Param("reason") String reason);
+
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("update Blog b set b.likeCount = b.likeCount + :delta where b.id = :id")
     int addLikeCount(@Param("id") Long id, @Param("delta") long delta);

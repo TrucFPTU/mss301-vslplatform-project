@@ -27,6 +27,7 @@ import com.vsl.social.repository.BlogReportRepository;
 import com.vsl.social.repository.BlogRepository;
 import com.vsl.social.repository.BlogShareRepository;
 import com.vsl.social.service.BlockService;
+import com.vsl.social.service.UserCleanupService;
 import com.vsl.social.service.BlogService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.ObjectProvider;
@@ -297,6 +298,12 @@ public class BlogServiceImpl implements BlogService {
         Blog blog = getBlog(blogId);
         if (blog.getStatus() != BlogStatus.HIDDEN) {
             throw new AppException(ErrorCode.VALIDATION_ERROR, "Chỉ khôi phục được bài đang bị gỡ");
+        }
+        // Bài bị ẩn vì tác giả xóa tài khoản thì không khôi phục được. Xét cả lý do gỡ (khi identity tạm lỗi)
+        // lẫn cờ deleted của identity (bài admin gỡ trước rồi tác giả mới xóa tài khoản).
+        if (UserCleanupService.AUTHOR_DELETED_REASON.equals(blog.getDeletionReason())
+                || identityClient.getSummary(blog.getAuthorId()).map(UserSummary::deleted).orElse(false)) {
+            throw new AppException(ErrorCode.BLOG_AUTHOR_DELETED);
         }
         blog.setStatus(BlogStatus.PUBLISHED);
         blog.setDeletionReason(null);

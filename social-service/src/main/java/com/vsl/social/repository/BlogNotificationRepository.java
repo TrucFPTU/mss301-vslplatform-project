@@ -21,4 +21,9 @@ public interface BlogNotificationRepository extends JpaRepository<BlogNotificati
     @Modifying
     @Query("delete from BlogNotification n where n.blogId = :blogId")
     int deleteByBlogId(@Param("blogId") Long blogId);
+
+    /** Xóa thông báo gửi TỚI recipientId (người dùng đã xóa tài khoản). */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("delete from BlogNotification n where n.recipientId = :id")
+    int deleteByRecipient(@Param("id") Long id);
 }

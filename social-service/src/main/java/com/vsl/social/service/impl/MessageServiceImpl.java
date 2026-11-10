@@ -130,12 +130,13 @@ public class MessageServiceImpl implements MessageService {
         if (blockService.isBlockedBetween(userId, recipientId)) {
             throw new AppException(ErrorCode.USER_BLOCKED);
         }
-        if (!canMessage(userId, recipientId)) {
-            throw new AppException(ErrorCode.MESSAGE_NOT_ALLOWED);
-        }
-        // Tài khoản đã xóa: quan hệ theo dõi cũ vẫn còn nhưng không nhắn tiếp được (identity lỗi -> không chặn).
+        // Tài khoản đã xóa -> 404, xét TRƯỚC quan hệ theo dõi: saga xóa tài khoản gỡ hết theo dõi của người đó,
+        // nên nếu xét sau thì người gửi nhận nhầm lỗi "phải theo dõi nhau". identity lỗi -> không chặn.
         if (identityClient.getSummary(recipientId).map(UserSummary::deleted).orElse(false)) {
             throw new AppException(ErrorCode.USER_NOT_FOUND);
+        }
+        if (!canMessage(userId, recipientId)) {
+            throw new AppException(ErrorCode.MESSAGE_NOT_ALLOWED);
         }
         if (messageRepository.countBySenderIdAndCreatedAtAfter(userId, Instant.now().minus(RATE_WINDOW)) >= RATE_LIMIT) {
             throw new AppException(ErrorCode.MESSAGE_RATE_LIMITED);

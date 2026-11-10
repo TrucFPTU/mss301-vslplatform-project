@@ -135,6 +135,15 @@ class MessageServiceTest {
     }
 
     @Test
+    void send_toDeletedAccount_afterSagaRemovedFollows_stillNotFound() {
+        // Saga xóa tài khoản đã gỡ mọi theo dõi -> vẫn phải báo "không tồn tại", không phải "phải theo dõi nhau".
+        when(identityClient.getSummary(B)).thenReturn(Optional.of(new UserSummary(B, "deleted_2", "Người dùng đã xóa", null, true)));
+
+        assertAppError(() -> service.send(A, B, "còn đó không?"), ErrorCode.USER_NOT_FOUND);
+        verify(messageRepository, never()).save(any());
+    }
+
+    @Test
     void thread_withDeletedAccount_readOnly() {
         follows(A, B);
         when(messageRepository.findThreadBefore(eq(A), eq(B), anyLong(), any()))
