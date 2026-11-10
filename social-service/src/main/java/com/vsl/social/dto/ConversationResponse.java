@@ -5,6 +5,7 @@ public record ConversationResponse(
         UserBriefResponse partner,
         MessageResponse lastMessage,
         long unreadCount,
-        boolean canMessage
+        boolean canMessage,
+        boolean blockedByMe
 ) {
 }

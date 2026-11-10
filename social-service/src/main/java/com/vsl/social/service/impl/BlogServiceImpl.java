@@ -26,6 +26,7 @@ import com.vsl.social.repository.BlogNotificationRepository;
 import com.vsl.social.repository.BlogReportRepository;
 import com.vsl.social.repository.BlogRepository;
 import com.vsl.social.repository.BlogShareRepository;
+import com.vsl.social.service.BlockService;
 import com.vsl.social.service.BlogService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.ObjectProvider;
@@ -41,14 +42,18 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
  * Nghiệp vụ bài viết (bê đủ từ BlogServiceImpl monolith).
  * Hiển thị: PUBLISHED ai cũng xem; DRAFT/HIDDEN chỉ tác giả và ADMIN (người khác nhận NOT_FOUND để không lộ bài).
+ * Chặn: hai người có quan hệ chặn không thấy bài của nhau (danh sách bỏ qua, xem chi tiết / tương tác -> NOT_FOUND);
+ * ADMIN không bị ảnh hưởng. Khách (chưa đăng nhập) vẫn xem được mọi bài công khai.
  * Sửa so với monolith: admin không đặt thẳng HIDDEN/khôi phục qua "sửa bài" nữa (phải qua hide/restore có
  * lý do); chỉ kiểm duyệt lại khi tiêu đề/nội dung đổi hoặc bài chuyển sang công khai (đỡ gọi AI thừa).
  */
@@ -66,6 +71,7 @@ public class BlogServiceImpl implements BlogService {
     private final BlogPublishGuard publishGuard;
     private final SocialViews views;
     private final IdentityClient identityClient;
+    private final BlockService blockService;
     /** Không cấu hình MinIO thì không có bean -> upload ảnh bìa báo lỗi, các chức năng khác vẫn chạy. */
     private final ObjectProvider<StorageService> storage;
 
@@ -147,10 +153,11 @@ public class BlogServiceImpl implements BlogService {
         Pageable pageable = Paging.newestFirst(page, size);
         Page<Blog> result;
         if (StringUtils.hasText(keyword)) {
-            result = blogRepository.findByStatusAndTitleContainingIgnoreCase(BlogStatus.PUBLISHED, keyword.trim(), pageable);
+            result = blogRepository.findPublishedByTitle(keyword.trim(), excludedFor(viewerId), pageable);
         } else if (viewerId != null) {
             // Thứ tự đã nằm trong câu query (ưu tiên người đang theo dõi) - không thêm Sort.
-            result = blogRepository.findPublishedPrioritizingFollowed(viewerId, Paging.unsorted(page, size));
+            result = blogRepository.findPublishedPrioritizingFollowed(viewerId, excludedFor(viewerId),
+                    Paging.unsorted(page, size));
         } else {
             result = blogRepository.findByStatus(BlogStatus.PUBLISHED, pageable);
         }
@@ -166,9 +173,13 @@ public class BlogServiceImpl implements BlogService {
                     PageResponse.of(List.of(), Math.max(page, 0), size, 0));
         }
         PageResponse<UserSummary> userPage = identityClient.search(term, page, Math.min(Math.max(size, 1), Paging.MAX_SIZE));
-        List<Long> matchedAuthorIds = userPage.getContent().stream().map(UserSummary::userId).toList();
+        Set<Long> hidden = hiddenFor(viewerId);
+        // Người có quan hệ chặn không hiện trong kết quả tìm người (tổng số của trang có thể lệch vài người).
+        List<Long> matchedAuthorIds = userPage.getContent().stream().map(UserSummary::userId)
+                .filter(id -> !hidden.contains(id)).toList();
         Page<Blog> blogs = blogRepository.searchPublished(term,
-                matchedAuthorIds.isEmpty() ? List.of(-1L) : matchedAuthorIds, Paging.newestFirst(page, size));
+                matchedAuthorIds.isEmpty() ? List.of(-1L) : matchedAuthorIds, BlockService.forNotIn(hidden),
+                Paging.newestFirst(page, size));
 
         Map<Long, UserSummary> known = userPage.getContent().stream()
                 .collect(Collectors.toMap(UserSummary::userId, s -> s, (a, b) -> a));
@@ -180,6 +191,9 @@ public class BlogServiceImpl implements BlogService {
     @Override
     @Transactional(readOnly = true)
     public PageResponse<BlogResponse> listByAuthor(Long authorId, Long viewerId, int page, int size) {
+        if (blockedForViewer(authorId, viewerId)) {
+            return PageResponse.of(List.of(), Math.max(page, 0), size, 0);
+        }
         Pageable pageable = Paging.newestFirst(page, size);
         Page<Blog> result = Objects.equals(authorId, viewerId) || AccessControl.isAdmin()
                 ? blogRepository.findByAuthorId(authorId, pageable)
@@ -190,7 +204,11 @@ public class BlogServiceImpl implements BlogService {
     @Override
     @Transactional(readOnly = true)
     public PageResponse<SharedBlogResponse> listSharedOnProfile(Long userId, Long viewerId, int page, int size) {
-        Page<BlogShare> shares = shareRepository.findProfileShares(userId, Paging.newestFirst(page, size));
+        if (blockedForViewer(userId, viewerId)) {
+            return PageResponse.of(List.of(), Math.max(page, 0), size, 0);
+        }
+        Page<BlogShare> shares = shareRepository.findProfileShares(userId, excludedFor(viewerId),
+                Paging.newestFirst(page, size));
         return SocialViews.page(shares, list -> {
             Map<Long, BlogResponse> blogs = views.blogs(list.stream().map(BlogShare::getBlog).distinct().toList(), viewerId)
                     .stream().collect(Collectors.toMap(BlogResponse::id, b -> b));
@@ -314,6 +332,25 @@ public class BlogServiceImpl implements BlogService {
         if (!visible) {
             throw new AppException(ErrorCode.BLOG_NOT_FOUND);
         }
+        // Có quan hệ chặn với tác giả: coi như không có bài (không xem / like / bình luận / chia sẻ / tố cáo).
+        if (blockedForViewer(blog.getAuthorId(), viewerId)) {
+            throw new AppException(ErrorCode.BLOG_NOT_FOUND);
+        }
+    }
+
+    /** Người xem và userId có quan hệ chặn (ADMIN không bị ảnh hưởng; khách / chính mình -> false). */
+    private boolean blockedForViewer(Long userId, Long viewerId) {
+        return !AccessControl.isAdmin() && blockService.isBlockedBetween(userId, viewerId);
+    }
+
+    /** Những người có quan hệ chặn với người xem (ADMIN / khách: rỗng). */
+    private Set<Long> hiddenFor(Long viewerId) {
+        return AccessControl.isAdmin() ? Set.of() : blockService.hiddenUserIds(viewerId);
+    }
+
+    /** Như hiddenFor nhưng dùng được trong "NOT IN" của JPQL. */
+    private Collection<Long> excludedFor(Long viewerId) {
+        return BlockService.forNotIn(hiddenFor(viewerId));
     }
 
     /** Trạng thái người dùng được tự đặt: chỉ DRAFT / PUBLISHED. HIDDEN do admin gỡ bài. */

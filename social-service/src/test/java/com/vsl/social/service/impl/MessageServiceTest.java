@@ -1,5 +1,7 @@
 package com.vsl.social.service.impl;
 
+import com.vsl.social.service.BlockService;
+
 import com.vsl.common.exception.ErrorCode;
 import com.vsl.social.client.IdentityClient;
 import com.vsl.social.dto.ChatThreadResponse;
@@ -48,6 +50,8 @@ class MessageServiceTest {
     UserFollowRepository followRepository;
     @Mock
     IdentityClient identityClient;
+    @Mock
+    BlockService blockService;
     @InjectMocks
     MessageServiceImpl service;
 
@@ -90,6 +94,66 @@ class MessageServiceTest {
         assertThat(saved.getValue().getRecipientId()).isEqualTo(A);
         assertThat(saved.getValue().getContent()).isEqualTo("chào bạn");
         assertThat(res.mine()).isTrue();
+    }
+
+    @Test
+    void blocked_cannotMessageEvenWhenFollowing() {
+        follows(A, B);
+        when(blockService.isBlockedBetween(A, B)).thenReturn(true);
+        when(blockService.isBlockedBetween(B, A)).thenReturn(true);
+
+        assertThat(service.canMessage(A, B)).isFalse();
+        assertThat(service.canMessage(B, A)).isFalse();
+        assertAppError(() -> service.send(B, A, "hi"), ErrorCode.USER_BLOCKED);
+        verify(messageRepository, never()).save(any());
+    }
+
+    @Test
+    void thread_blockedByMe_flagged_historyStillReadable() {
+        follows(A, B);
+        when(blockService.isBlockedBetween(A, B)).thenReturn(true);
+        when(blockService.hasBlocked(A, B)).thenReturn(true);
+        when(messageRepository.findThreadBefore(eq(A), eq(B), anyLong(), any()))
+                .thenReturn(new ArrayList<>(List.of(msg(1, B, A, "cũ"))));
+        when(identityClient.getSummary(B)).thenReturn(java.util.Optional.of(new UserSummary(B, "bob", "Bob", null)));
+
+        ChatThreadResponse res = service.thread(A, B, null, null, 30);
+
+        assertThat(res.messages()).hasSize(1);
+        assertThat(res.canMessage()).isFalse();
+        assertThat(res.blockedByMe()).isTrue();
+        assertThat(res.blocked()).isTrue();
+    }
+
+    @Test
+    void send_toDeletedAccount_notFound_evenIfStillFollowing() {
+        follows(A, B);
+        when(identityClient.getSummary(B)).thenReturn(Optional.of(new UserSummary(B, "deleted_2", "Người dùng đã xóa", null, true)));
+
+        assertAppError(() -> service.send(A, B, "còn đó không?"), ErrorCode.USER_NOT_FOUND);
+        verify(messageRepository, never()).save(any());
+    }
+
+    @Test
+    void thread_withDeletedAccount_readOnly() {
+        follows(A, B);
+        when(messageRepository.findThreadBefore(eq(A), eq(B), anyLong(), any()))
+                .thenReturn(new ArrayList<>(List.of(msg(1, A, B, "chào"))));
+        when(identityClient.getSummary(B)).thenReturn(Optional.of(new UserSummary(B, "deleted_2", "Người dùng đã xóa", null, true)));
+
+        ChatThreadResponse res = service.thread(A, B, null, null, 30);
+
+        assertThat(res.messages()).hasSize(1);
+        assertThat(res.canMessage()).isFalse();
+        assertThat(res.partner().deleted()).isTrue();
+    }
+
+    @Test
+    void send_1000CharsAfterTrim_ok() {
+        follows(A, B);
+        when(messageRepository.save(any())).thenAnswer(i -> { DirectMessage m = i.getArgument(0); m.setId(5L); return m; });
+
+        assertThat(service.send(A, B, "  " + "x".repeat(1000) + "\n").content()).hasSize(1000);
     }
 
     @Test

@@ -73,7 +73,9 @@ public enum ErrorCode {
     USER_NOT_FOUND("SOCIAL_4019", "Không tìm thấy người dùng", HttpStatus.NOT_FOUND),
     CANNOT_MESSAGE_SELF("SOCIAL_4020", "Không thể nhắn tin cho chính mình", HttpStatus.BAD_REQUEST),
     MESSAGE_NOT_ALLOWED("SOCIAL_4021", "Chỉ nhắn tin được khi một trong hai người đang theo dõi người kia", HttpStatus.FORBIDDEN),
-    MESSAGE_RATE_LIMITED("SOCIAL_4022", "Bạn gửi tin hơi nhanh, chờ một chút rồi gửi tiếp nhé", HttpStatus.TOO_MANY_REQUESTS);
+    MESSAGE_RATE_LIMITED("SOCIAL_4022", "Bạn gửi tin hơi nhanh, chờ một chút rồi gửi tiếp nhé", HttpStatus.TOO_MANY_REQUESTS),
+    CANNOT_BLOCK_SELF("SOCIAL_4023", "Không thể tự chặn chính mình", HttpStatus.BAD_REQUEST),
+    USER_BLOCKED("SOCIAL_4024", "Không thể tương tác vì một trong hai người đã chặn người kia", HttpStatus.FORBIDDEN);
 
     private final String code;
     private final String defaultMessage;

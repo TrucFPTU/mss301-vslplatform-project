@@ -9,6 +9,7 @@ import com.vsl.social.dto.SocialUserResponse;
 import com.vsl.social.entity.NotificationType;
 import com.vsl.social.entity.UserFollow;
 import com.vsl.social.repository.UserFollowRepository;
+import com.vsl.social.service.BlockService;
 import com.vsl.social.service.FollowService;
 import com.vsl.social.service.NotificationService;
 import lombok.RequiredArgsConstructor;
@@ -30,12 +31,16 @@ public class FollowServiceImpl implements FollowService {
     private final NotificationService notificationService;
     private final IdentityClient identityClient;
     private final SocialViews views;
+    private final BlockService blockService;
 
     @Override
     @Transactional
     public FollowStatusResponse follow(Long followeeId, Long userId) {
         if (Objects.equals(followeeId, userId)) {
             throw new AppException(ErrorCode.CANNOT_FOLLOW_SELF);
+        }
+        if (blockService.isBlockedBetween(userId, followeeId)) {
+            throw new AppException(ErrorCode.USER_BLOCKED);
         }
         if (!followRepository.existsByFollowerIdAndFolloweeId(userId, followeeId)) {
             if (!identityClient.exists(followeeId)) {
@@ -62,10 +67,13 @@ public class FollowServiceImpl implements FollowService {
                 && followRepository.existsByFollowerIdAndFolloweeId(viewerId, targetUserId);
         boolean followsMe = viewerId != null && !self
                 && followRepository.existsByFollowerIdAndFolloweeId(targetUserId, viewerId);
+        boolean blockedByMe = !self && blockService.hasBlocked(viewerId, targetUserId);
+        boolean blocked = blockedByMe || (!self && blockService.isBlockedBetween(viewerId, targetUserId));
         return new FollowStatusResponse(targetUserId, followedByMe, followsMe, followedByMe && followsMe,
                 followRepository.countByFolloweeId(targetUserId),
                 followRepository.countByFollowerId(targetUserId),
-                followRepository.countFriends(targetUserId));
+                followRepository.countFriends(targetUserId),
+                blockedByMe, blocked);
     }
 
     @Override

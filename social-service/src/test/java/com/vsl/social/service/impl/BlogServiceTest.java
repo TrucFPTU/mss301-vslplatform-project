@@ -1,5 +1,7 @@
 package com.vsl.social.service.impl;
 
+import com.vsl.social.service.BlockService;
+
 import com.vsl.common.exception.ErrorCode;
 import com.vsl.common.storage.StorageService;
 import com.vsl.social.client.IdentityClient;
@@ -38,6 +40,7 @@ import org.springframework.mock.web.MockMultipartFile;
 import java.io.InputStream;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.Optional;
 
 import static com.vsl.social.service.impl.TestSupport.ADMIN;
@@ -89,6 +92,8 @@ class BlogServiceTest {
     ObjectProvider<StorageService> storageProvider;
     @Mock
     StorageService storage;
+    @Mock
+    BlockService blockService;
 
     BlogServiceImpl blogService;
 
@@ -98,7 +103,7 @@ class BlogServiceTest {
         SocialViews views = new SocialViews(identityClient, blogRepository, blogLikeRepository, followRepository,
                 commentLikeRepository, replyLikeRepository, replyRepository);
         blogService = new BlogServiceImpl(blogRepository, blogLikeRepository, notificationRepository, reportRepository,
-                shareRepository, publishGuard, views, identityClient, storageProvider);
+                shareRepository, publishGuard, views, identityClient, blockService, storageProvider);
         when(identityClient.getSummaries(any())).thenReturn(Map.of(
                 AUTHOR, new UserSummary(AUTHOR, "author", "Tác Giả", "http://a/1.png")));
         when(storageProvider.getIfAvailable()).thenReturn(storage);
@@ -116,6 +121,25 @@ class BlogServiceTest {
     // ---- Quy tắc hiển thị (ensureVisible) — điểm có nhiều phụ thuộc nhất ----
     @Nested
     class Visibility {
+
+        @Test
+        void blockRelationWithAuthor_publishedBlogIsNotFound() {
+            loginAs(OTHER, "USER");
+            when(blogRepository.findById(1L)).thenReturn(Optional.of(blog(1L, AUTHOR, BlogStatus.PUBLISHED)));
+            when(blockService.isBlockedBetween(AUTHOR, OTHER)).thenReturn(true);
+
+            assertAppError(() -> blogService.getDetail(1L, OTHER), ErrorCode.BLOG_NOT_FOUND);
+            assertAppError(() -> blogService.getVisibleBlog(1L, OTHER), ErrorCode.BLOG_NOT_FOUND);
+        }
+
+        @Test
+        void blockRelation_adminStillSeesBlog() {
+            loginAs(ADMIN, "ADMIN");
+            when(blogRepository.findById(1L)).thenReturn(Optional.of(blog(1L, AUTHOR, BlogStatus.PUBLISHED)));
+            when(blockService.isBlockedBetween(AUTHOR, ADMIN)).thenReturn(true);
+
+            assertThat(blogService.getVisibleBlog(1L, ADMIN).getId()).isEqualTo(1L);
+        }
 
         @Test
         void publishedVisibleToGuest() {
@@ -417,25 +441,25 @@ class BlogServiceTest {
 
         @Test
         void listPublished_keywordSearchesTitle() {
-            when(blogRepository.findByStatusAndTitleContainingIgnoreCase(eq(BlogStatus.PUBLISHED), eq("vsl"), any(Pageable.class)))
-                    .thenReturn(Page.empty());
+            when(blogRepository.findPublishedByTitle(eq("vsl"), any(), any(Pageable.class))).thenReturn(Page.empty());
 
             blogService.listPublished("  vsl ", OTHER, 0, 10);
 
-            verify(blogRepository).findByStatusAndTitleContainingIgnoreCase(eq(BlogStatus.PUBLISHED), eq("vsl"), any(Pageable.class));
+            // Không chặn ai -> danh sách loại trừ chỉ có -1 (NOT IN rỗng là lỗi SQL).
+            verify(blogRepository).findPublishedByTitle(eq("vsl"), eq(List.of(-1L)), any(Pageable.class));
         }
 
         @Test
         void listPublished_guestNewestFirst_loggedInPrioritizesFollowed() {
             when(blogRepository.findByStatus(eq(BlogStatus.PUBLISHED), any(Pageable.class))).thenReturn(Page.empty());
-            when(blogRepository.findPublishedPrioritizingFollowed(eq(OTHER), any(Pageable.class)))
+            when(blogRepository.findPublishedPrioritizingFollowed(eq(OTHER), any(), any(Pageable.class)))
                     .thenReturn(new PageImpl<>(List.of(blog(1L, AUTHOR, BlogStatus.PUBLISHED))));
 
             blogService.listPublished(null, null, 0, 10);
             var page = blogService.listPublished("   ", OTHER, 0, 10);
 
             verify(blogRepository).findByStatus(eq(BlogStatus.PUBLISHED), any(Pageable.class));
-            verify(blogRepository).findPublishedPrioritizingFollowed(eq(OTHER), any(Pageable.class));
+            verify(blogRepository).findPublishedPrioritizingFollowed(eq(OTHER), any(), any(Pageable.class));
             assertThat(page.getContent()).hasSize(1);
             assertThat(page.getContent().get(0).author().fullName()).isEqualTo("Tác Giả");
         }
@@ -444,13 +468,72 @@ class BlogServiceTest {
         void search_includesBlogsOfMatchedAuthors() {
             when(identityClient.search("tac gia", 0, 10)).thenReturn(com.vsl.common.response.PageResponse.of(
                     List.of(new UserSummary(AUTHOR, "author", "Tác Giả", null)), 0, 10, 1));
-            when(blogRepository.searchPublished(eq("tac gia"), eq(List.of(AUTHOR)), any(Pageable.class)))
+            when(blogRepository.searchPublished(eq("tac gia"), eq(List.of(AUTHOR)), any(), any(Pageable.class)))
                     .thenReturn(Page.empty());
 
             var res = blogService.search(" tac gia ", null, 0, 10);
 
             assertThat(res.users().getContent()).extracting("userId").containsExactly(AUTHOR);
-            verify(blogRepository).searchPublished(eq("tac gia"), eq(List.of(AUTHOR)), any(Pageable.class));
+            verify(blogRepository).searchPublished(eq("tac gia"), eq(List.of(AUTHOR)), any(), any(Pageable.class));
+        }
+
+        @Test
+        void search_hidesUsersAndBlogsWithBlockRelation() {
+            loginAs(OTHER, "USER");
+            when(blockService.hiddenUserIds(OTHER)).thenReturn(Set.of(AUTHOR));
+            when(identityClient.search("tac gia", 0, 10)).thenReturn(com.vsl.common.response.PageResponse.of(
+                    List.of(new UserSummary(AUTHOR, "author", "Tác Giả", null)), 0, 10, 1));
+            when(blogRepository.searchPublished(any(), any(), any(), any(Pageable.class))).thenReturn(Page.empty());
+
+            var res = blogService.search("tac gia", OTHER, 0, 10);
+
+            assertThat(res.users().getContent()).isEmpty();
+            verify(blogRepository).searchPublished(eq("tac gia"), eq(List.of(-1L)), eq(Set.of(AUTHOR)), any(Pageable.class));
+        }
+
+        @Test
+        void feed_excludesAuthorsWithBlockRelation() {
+            loginAs(OTHER, "USER");
+            when(blockService.hiddenUserIds(OTHER)).thenReturn(Set.of(AUTHOR));
+            when(blogRepository.findPublishedPrioritizingFollowed(eq(OTHER), any(), any(Pageable.class)))
+                    .thenReturn(Page.empty());
+
+            blogService.listPublished(null, OTHER, 0, 10);
+
+            verify(blogRepository).findPublishedPrioritizingFollowed(eq(OTHER), eq(Set.of(AUTHOR)), any(Pageable.class));
+        }
+
+        @Test
+        void feed_adminIgnoresBlocks() {
+            loginAs(ADMIN, "ADMIN");
+            when(blockService.hiddenUserIds(ADMIN)).thenReturn(Set.of(AUTHOR));
+            when(blogRepository.findPublishedPrioritizingFollowed(eq(ADMIN), any(), any(Pageable.class)))
+                    .thenReturn(Page.empty());
+
+            blogService.listPublished(null, ADMIN, 0, 10);
+
+            verify(blogRepository).findPublishedPrioritizingFollowed(eq(ADMIN), eq(List.of(-1L)), any(Pageable.class));
+        }
+
+        @Test
+        void listByAuthor_blockRelation_returnsEmptyWithoutQuery() {
+            loginAs(OTHER, "USER");
+            when(blockService.isBlockedBetween(AUTHOR, OTHER)).thenReturn(true);
+
+            var page = blogService.listByAuthor(AUTHOR, OTHER, 0, 10);
+
+            assertThat(page.getContent()).isEmpty();
+            assertThat(page.getTotalElements()).isZero();
+            verify(blogRepository, never()).findByAuthorIdAndStatus(any(), any(), any());
+        }
+
+        @Test
+        void sharedOnProfile_blockRelation_returnsEmpty() {
+            loginAs(OTHER, "USER");
+            when(blockService.isBlockedBetween(AUTHOR, OTHER)).thenReturn(true);
+
+            assertThat(blogService.listSharedOnProfile(AUTHOR, OTHER, 0, 10).getContent()).isEmpty();
+            verify(shareRepository, never()).findProfileShares(any(), any(), any());
         }
 
         @Test

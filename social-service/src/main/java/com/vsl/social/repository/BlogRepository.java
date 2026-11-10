@@ -15,7 +15,11 @@ public interface BlogRepository extends JpaRepository<Blog, Long> {
 
     Page<Blog> findByStatus(BlogStatus status, Pageable pageable);
 
-    Page<Blog> findByStatusAndTitleContainingIgnoreCase(BlogStatus status, String keyword, Pageable pageable);
+    /** Bài công khai theo tiêu đề, bỏ bài của excludedAuthorIds (người có quan hệ chặn với người xem). */
+    @Query("SELECT b FROM Blog b WHERE b.status = com.vsl.social.entity.BlogStatus.PUBLISHED "
+            + "AND LOWER(b.title) LIKE LOWER(CONCAT('%', :keyword, '%')) AND b.authorId NOT IN :excluded")
+    Page<Blog> findPublishedByTitle(@Param("keyword") String keyword, @Param("excluded") Collection<Long> excludedAuthorIds,
+                                    Pageable pageable);
 
     Page<Blog> findByAuthorId(Long authorId, Pageable pageable);
 
@@ -70,20 +74,25 @@ public interface BlogRepository extends JpaRepository<Blog, Long> {
 
     // ---- Danh sách ----
 
-    /** Bảng tin: bài công khai, ưu tiên bài của người mình đang theo dõi, rồi mới nhất trước (như monolith). */
+    /**
+     * Bảng tin: bài công khai, ưu tiên bài của người mình đang theo dõi, rồi mới nhất trước (như monolith).
+     * Bỏ bài của excludedAuthorIds (người có quan hệ chặn với người xem).
+     */
     @Query(value = "SELECT b FROM Blog b LEFT JOIN UserFollow f ON f.followeeId = b.authorId AND f.followerId = :viewerId "
-            + "WHERE b.status = com.vsl.social.entity.BlogStatus.PUBLISHED "
+            + "WHERE b.status = com.vsl.social.entity.BlogStatus.PUBLISHED AND b.authorId NOT IN :excluded "
             + "ORDER BY CASE WHEN f.id IS NULL THEN 1 ELSE 0 END, b.createdAt DESC",
-            countQuery = "SELECT COUNT(b) FROM Blog b WHERE b.status = com.vsl.social.entity.BlogStatus.PUBLISHED")
-    Page<Blog> findPublishedPrioritizingFollowed(@Param("viewerId") Long viewerId, Pageable pageable);
+            countQuery = "SELECT COUNT(b) FROM Blog b WHERE b.status = com.vsl.social.entity.BlogStatus.PUBLISHED "
+            + "AND b.authorId NOT IN :excluded")
+    Page<Blog> findPublishedPrioritizingFollowed(@Param("viewerId") Long viewerId,
+                                                 @Param("excluded") Collection<Long> excludedAuthorIds, Pageable pageable);
 
     /** Tìm bài công khai theo tiêu đề / nội dung / tác giả (authorIds lấy từ identity theo tên). */
     @Query("SELECT b FROM Blog b WHERE b.status = com.vsl.social.entity.BlogStatus.PUBLISHED AND ("
             + "LOWER(b.title) LIKE LOWER(CONCAT('%', :keyword, '%')) "
             + "OR LOWER(b.content) LIKE LOWER(CONCAT('%', :keyword, '%')) "
-            + "OR b.authorId IN :authorIds)")
+            + "OR b.authorId IN :authorIds) AND b.authorId NOT IN :excluded")
     Page<Blog> searchPublished(@Param("keyword") String keyword, @Param("authorIds") Collection<Long> authorIds,
-                               Pageable pageable);
+                               @Param("excluded") Collection<Long> excludedAuthorIds, Pageable pageable);
 
     /**
      * Danh sách cho admin: mọi bài KHÔNG phải nháp + nháp của chính admin (không xem nháp người khác).
