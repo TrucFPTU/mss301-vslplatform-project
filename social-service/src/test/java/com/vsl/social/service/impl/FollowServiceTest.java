@@ -6,6 +6,7 @@ import com.vsl.social.dto.FollowStatusResponse;
 import com.vsl.social.entity.NotificationType;
 import com.vsl.social.entity.UserFollow;
 import com.vsl.social.repository.UserFollowRepository;
+import com.vsl.social.service.BlockService;
 import com.vsl.social.service.NotificationService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -35,8 +36,30 @@ class FollowServiceTest {
     IdentityClient identityClient;
     @Mock
     SocialViews views;
+    @Mock
+    BlockService blockService;
     @InjectMocks
     FollowServiceImpl followService;
+
+    @Test
+    void follow_blockRelation_rejected() {
+        when(blockService.isBlockedBetween(OTHER, AUTHOR)).thenReturn(true);
+
+        assertAppError(() -> followService.follow(AUTHOR, OTHER), ErrorCode.USER_BLOCKED);
+        verify(followRepository, never()).save(any());
+        verify(notificationService, never()).notify(any(), any(), any(), any());
+    }
+
+    @Test
+    void status_reportsBlockFlags() {
+        when(blockService.hasBlocked(OTHER, AUTHOR)).thenReturn(false);
+        when(blockService.isBlockedBetween(OTHER, AUTHOR)).thenReturn(true);
+
+        FollowStatusResponse res = followService.status(AUTHOR, OTHER);
+
+        assertThat(res.blockedByMe()).isFalse(); // bị AUTHOR chặn
+        assertThat(res.blocked()).isTrue();
+    }
 
     @Test
     void follow_self_rejected() {
@@ -92,7 +115,7 @@ class FollowServiceTest {
 
         FollowStatusResponse res = followService.status(AUTHOR, null);
 
-        assertThat(res).isEqualTo(new FollowStatusResponse(AUTHOR, false, false, false, 3, 1, 1));
+        assertThat(res).isEqualTo(new FollowStatusResponse(AUTHOR, false, false, false, 3, 1, 1, false, false));
         verify(followRepository, never()).existsByFollowerIdAndFolloweeId(any(), any());
     }
 

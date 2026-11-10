@@ -1,5 +1,7 @@
 package com.vsl.social.service.impl;
 
+import com.vsl.social.service.BlockService;
+
 import com.vsl.common.exception.ErrorCode;
 import com.vsl.social.dto.NotificationResponse;
 import com.vsl.social.entity.BlogNotification;
@@ -32,12 +34,21 @@ class NotificationServiceTest {
     BlogNotificationRepository notificationRepository;
     @Mock
     SocialViews views;
+    @Mock
+    BlockService blockService;
     @InjectMocks
     NotificationServiceImpl notificationService;
 
     @Test
     void notify_self_isSkipped() {
         notificationService.notify(AUTHOR, AUTHOR, NotificationType.LIKE, 1L);
+        verify(notificationRepository, never()).save(any());
+    }
+
+    @Test
+    void notify_blockRelation_isSkipped() {
+        when(blockService.isBlockedBetween(AUTHOR, OTHER)).thenReturn(true);
+        notificationService.notify(AUTHOR, OTHER, NotificationType.REPLY, 1L);
         verify(notificationRepository, never()).save(any());
     }
 

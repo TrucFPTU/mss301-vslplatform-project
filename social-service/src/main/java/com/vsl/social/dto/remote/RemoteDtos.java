@@ -21,7 +21,12 @@ public final class RemoteDtos {
 
     /** Hồ sơ công khai từ identity-service. */
     @JsonIgnoreProperties(ignoreUnknown = true)
-    public record UserSummary(Long userId, String username, String fullName, String avatarUrl) {
+    /** deleted = tài khoản đã xóa (identity cũ không gửi trường này -> false). */
+    public record UserSummary(Long userId, String username, String fullName, String avatarUrl, boolean deleted) {
+
+        public UserSummary(Long userId, String username, String fullName, String avatarUrl) {
+            this(userId, username, fullName, avatarUrl, false);
+        }
 
         /** Tên hiển thị: họ tên nếu có, không thì username (giống monolith). */
         public String displayName() {

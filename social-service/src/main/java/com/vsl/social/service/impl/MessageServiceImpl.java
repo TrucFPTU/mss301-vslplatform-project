@@ -11,6 +11,7 @@ import com.vsl.social.dto.remote.RemoteDtos.UserSummary;
 import com.vsl.social.entity.DirectMessage;
 import com.vsl.social.repository.DirectMessageRepository;
 import com.vsl.social.repository.UserFollowRepository;
+import com.vsl.social.service.BlockService;
 import com.vsl.social.service.MessageService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
@@ -32,6 +33,7 @@ import java.util.Set;
 /**
  * Tin nhắn riêng (không có ở monolith). Không dùng WebSocket: FE hỏi tin mới định kỳ bằng after=<id tin cuối>.
  * Không kiểm duyệt nội dung bằng AI (chỉ chặn rỗng / quá dài / gửi quá nhanh).
+ * Một trong hai người chặn người kia -> không ai gửi được (vẫn đọc lại lịch sử cũ).
  */
 @Service
 @RequiredArgsConstructor
@@ -46,6 +48,7 @@ public class MessageServiceImpl implements MessageService {
     private final DirectMessageRepository messageRepository;
     private final UserFollowRepository followRepository;
     private final IdentityClient identityClient;
+    private final BlockService blockService;
 
     @Override
     @Transactional(readOnly = true)
@@ -64,12 +67,22 @@ public class MessageServiceImpl implements MessageService {
         }
         Set<Long> linked = new HashSet<>(followRepository.findFolloweeIdsAmong(userId, partners));
         linked.addAll(followRepository.findFollowerIdsAmong(userId, partners));
+        Set<Long> hidden = blockService.hiddenUserIds(userId);
+        Set<Long> blockedByMe = new HashSet<>();
+        for (Long p : partners) {
+            if (hidden.contains(p) && blockService.hasBlocked(userId, p)) {
+                blockedByMe.add(p);
+            }
+        }
         Map<Long, UserSummary> users = identityClient.getSummaries(partners);
 
         return lasts.stream().map(m -> {
             Long p = partnerOf(m, userId);
-            return new ConversationResponse(UserBriefResponse.of(p, users.get(p)), MessageResponse.of(m, userId),
-                    unread.getOrDefault(p, 0L), linked.contains(p));
+            UserSummary s = users.get(p);
+            boolean deleted = s != null && s.deleted();
+            return new ConversationResponse(UserBriefResponse.of(p, s), MessageResponse.of(m, userId),
+                    unread.getOrDefault(p, 0L), linked.contains(p) && !hidden.contains(p) && !deleted,
+                    blockedByMe.contains(p));
         }).toList();
     }
 
@@ -95,8 +108,12 @@ public class MessageServiceImpl implements MessageService {
         if (summary == null && page.isEmpty() && before == null && after == null && !identityClient.exists(partnerId)) {
             throw new AppException(ErrorCode.USER_NOT_FOUND);
         }
-        return new ChatThreadResponse(UserBriefResponse.of(partnerId, summary), canMessage(userId, partnerId),
-                page.stream().map(m -> MessageResponse.of(m, userId)).toList(), hasMore);
+        boolean blocked = blockService.isBlockedBetween(userId, partnerId);
+        boolean deleted = summary != null && summary.deleted();
+        return new ChatThreadResponse(UserBriefResponse.of(partnerId, summary),
+                !blocked && !deleted && canMessage(userId, partnerId),
+                page.stream().map(m -> MessageResponse.of(m, userId)).toList(), hasMore,
+                blocked && blockService.hasBlocked(userId, partnerId), blocked);
     }
 
     @Override
@@ -110,8 +127,15 @@ public class MessageServiceImpl implements MessageService {
         if (text.length() > DirectMessage.MAX_LENGTH) {
             throw new AppException(ErrorCode.VALIDATION_ERROR, "Tin nhắn tối đa 1000 ký tự");
         }
+        if (blockService.isBlockedBetween(userId, recipientId)) {
+            throw new AppException(ErrorCode.USER_BLOCKED);
+        }
         if (!canMessage(userId, recipientId)) {
             throw new AppException(ErrorCode.MESSAGE_NOT_ALLOWED);
+        }
+        // Tài khoản đã xóa: quan hệ theo dõi cũ vẫn còn nhưng không nhắn tiếp được (identity lỗi -> không chặn).
+        if (identityClient.getSummary(recipientId).map(UserSummary::deleted).orElse(false)) {
+            throw new AppException(ErrorCode.USER_NOT_FOUND);
         }
         if (messageRepository.countBySenderIdAndCreatedAtAfter(userId, Instant.now().minus(RATE_WINDOW)) >= RATE_LIMIT) {
             throw new AppException(ErrorCode.MESSAGE_RATE_LIMITED);
@@ -138,6 +162,9 @@ public class MessageServiceImpl implements MessageService {
     @Transactional(readOnly = true)
     public boolean canMessage(Long userId, Long otherId) {
         if (userId == null || otherId == null || Objects.equals(userId, otherId)) {
+            return false;
+        }
+        if (blockService.isBlockedBetween(userId, otherId)) {
             return false;
         }
         return followRepository.existsByFollowerIdAndFolloweeId(userId, otherId)

@@ -115,7 +115,8 @@ def cleanup():
     sql = {
         'vsl_social': f'delete from direct_messages where sender_id in ({ids_sql}) or recipient_id in ({ids_sql});'
                       f'delete from blog_notifications where actor_id in ({ids_sql}) or recipient_id in ({ids_sql});'
-                      f'delete from user_follows where follower_id in ({ids_sql}) or followee_id in ({ids_sql});',
+                      f'delete from user_follows where follower_id in ({ids_sql}) or followee_id in ({ids_sql});'
+                      f'delete from user_blocks where blocker_id in ({ids_sql}) or blocked_id in ({ids_sql});',
         'vsl_learning': f'delete from vocabulary_suggestions where requester_id in ({ids_sql});'
                         f'delete from user_favorites where user_id in ({ids_sql});'
                         f'delete from visit_logs where user_id in ({ids_sql});'
@@ -277,6 +278,81 @@ check('Lịch sử với user không tồn tại -> 404', s == 404, (s, b))
 codes = [call('POST', f'/api/messages/{al}', B, {'content': f'tin {i}'})[0] for i in range(21)]
 check('Gửi quá nhanh (21 tin/phút) -> 429', codes[:20] == [200] * 20 and codes[20] == 429, codes)
 
+s, b = call('POST', f'/api/messages/{ids["bob"]}', A, {'content': '  ' + 'y' * 1000 + '  '})
+check('Đúng 1000 ký tự sau khi cắt khoảng trắng hai đầu -> 200', s == 200 and len(data((s, b))['content']) == 1000, (s, b))
+
+# ---------------- Chặn người dùng (hai chiều) ----------------
+s, b = call('POST', f'/api/blocks/{al}', A)
+check('Tự chặn chính mình -> 400', s == 400 and b.get('code') == 'SOCIAL_4023', (s, b))
+s, b = call('POST', '/api/blocks/99999999', A)
+check('Chặn user không tồn tại -> 404', s == 404, (s, b))
+s, b = call('GET', '/api/blocks')
+check('Danh sách chặn cần đăng nhập', s == 401, (s, b))
+call('POST', f'/api/follows/{al}', C)
+call('POST', f'/api/follows/{ca}', A)
+s, b = call('POST', f'/api/blocks/{ca}', A)
+check('Alice chặn Carol', s == 200, (s, b))
+s, b = call('POST', f'/api/blocks/{ca}', A)
+check('Chặn lại lần nữa vẫn 200 (idempotent)', s == 200, (s, b))
+s, b = call('GET', f'/api/follows/{ca}/stats', A)
+st = data((s, b)) or {}
+check('Chặn -> gỡ theo dõi hai chiều, blockedByMe', s == 200 and st.get('blockedByMe') and st.get('blocked')
+      and not st.get('followedByMe') and not st.get('followsMe'), (s, b))
+s, b = call('GET', f'/api/follows/{al}/stats', C)
+st = data((s, b)) or {}
+check('Carol thấy blocked nhưng không phải blockedByMe', s == 200 and st.get('blocked') and not st.get('blockedByMe'), (s, b))
+s, b = call('GET', '/api/blocks', A)
+check('Danh sách chặn của Alice có Carol', s == 200 and [x['user']['userId'] for x in data((s, b))['content']] == [ca], (s, b))
+s, b = call('GET', f'/api/blogs/{blog_id}', C)
+check('Carol không xem được bài của Alice (404)', s == 404, (s, b))
+s, b = call('GET', f'/api/blogs/{blog_id}')
+check('Khách vẫn xem được bài công khai', s == 200, (s, b))
+s, b = call('GET', '/api/blogs?size=50', C)
+check('Bảng tin của Carol không có bài của Alice', s == 200 and all(x['author']['userId'] != al for x in data((s, b))['content']), (s, b))
+s, b = call('GET', f'/api/blogs/user/{al}', C)
+check('Trang bài viết của Alice với Carol: rỗng', s == 200 and data((s, b))['totalElements'] == 0, (s, b))
+s, b = call('GET', f'/api/blogs/user/{al}/shared', C)
+check('Bài được chia sẻ trên trang Alice với Carol: rỗng', s == 200 and data((s, b))['totalElements'] == 0, (s, b))
+s, b = call('GET', '/api/blogs/search?keyword=Alice', C)
+r = data((s, b)) or {}
+check('Tìm kiếm của Carol không ra Alice / bài của Alice', s == 200
+      and all(u['userId'] != al for u in r['users']['content'])
+      and all(x['author']['userId'] != al for x in r['blogs']['content']), (s, b))
+s, b = call('POST', f'/api/blogs/{blog_id}/likes', C)
+check('Carol không like được bài Alice (404)', s == 404, (s, b))
+s, b = call('POST', f'/api/blogs/{blog_id}/comments', C, {'content': 'xin chào'})
+check('Carol không bình luận được bài Alice (404)', s == 404, (s, b))
+s, b = call('POST', f'/api/follows/{al}', C)
+check('Carol không theo dõi được Alice (403)', s == 403 and b.get('code') == 'SOCIAL_4024', (s, b))
+s, b = call('POST', f'/api/follows/{ca}', A)
+check('Người chặn cũng không theo dõi được (403)', s == 403 and b.get('code') == 'SOCIAL_4024', (s, b))
+s, b = call('POST', f'/api/messages/{al}', C, {'content': 'mở chặn cho mình với'})
+check('Carol không nhắn được cho Alice (403)', s == 403 and b.get('code') == 'SOCIAL_4024', (s, b))
+s, b = call('POST', f'/api/messages/{ca}', A, {'content': 'hi'})
+check('Alice cũng không nhắn được cho Carol (403)', s == 403 and b.get('code') == 'SOCIAL_4024', (s, b))
+s, b = call('GET', f'/api/messages/{al}', C)
+th = data((s, b)) or {}
+check('Carol vẫn xem lịch sử: blocked, không blockedByMe, canMessage=false', s == 200 and len(th.get('messages', [])) == 2
+      and th.get('blocked') and not th.get('blockedByMe') and not th.get('canMessage'), (s, b))
+s, b = call('GET', f'/api/messages/{ca}', A)
+check('Alice thấy blockedByMe trong đoạn chat', s == 200 and data((s, b))['blockedByMe'], (s, b))
+s, b = call('GET', '/api/messages/conversations', A)
+conv = next((c for c in data((s, b)) or [] if c['partner']['userId'] == ca), {})
+check('Hộp thư Alice: Carol đánh dấu đã chặn, không nhắn được', s == 200 and conv.get('blockedByMe') and not conv.get('canMessage'), (s, b))
+s, b = call('DELETE', f'/api/blocks/{al}', C)
+s2, b2 = call('GET', f'/api/blogs/{blog_id}', C)
+check('Người bị chặn không tự gỡ chặn được', s == 200 and s2 == 404, (s, s2))
+s, b = call('DELETE', f'/api/blocks/{ca}', A)
+check('Alice bỏ chặn Carol', s == 200, (s, b))
+s, b = call('GET', f'/api/blogs/{blog_id}', C)
+check('Bỏ chặn -> Carol xem lại được bài', s == 200, (s, b))
+s, b = call('GET', f'/api/follows/{ca}/stats', A)
+st = data((s, b)) or {}
+check('Bỏ chặn không khôi phục theo dõi cũ', s == 200 and not st.get('blocked') and not st.get('followedByMe'), (s, b))
+s, b = call('POST', f'/api/follows/{al}', C)
+check('Bỏ chặn -> theo dõi lại được', s == 200 and data((s, b))['followedByMe'], (s, b))
+call('DELETE', f'/api/follows/{al}', C)
+
 # ---------------- Tố cáo -> gỡ bài ----------------
 s, b = call('POST', f'/api/blogs/{blog_id}/reports', B, {'reason': 'spam'})
 check('Bob tố cáo', s == 201, (s, b))
@@ -354,6 +430,16 @@ s, b = call('POST', '/api/auth/login', body={'username': f'bob{tag}', 'password'
 check('Tài khoản đã xóa không đăng nhập được', s == 401, (s, b))
 s, b = call('GET', f'/api/users/{ids["bob"]}')
 check('Tên hiển thị thành "Người dùng đã xóa"', data((s, b))['fullName'] == 'Người dùng đã xóa', (s, b))
+check('Hồ sơ công khai báo deleted=true', data((s, b)).get('deleted') is True, (s, b))
+s, b = call('POST', f'/api/messages/{ids["bob"]}', A, {'content': 'còn đó không?'})
+check('Nhắn cho tài khoản đã xóa (dù vẫn theo dõi) -> 404', s == 404, (s, b))
+s, b = call('GET', f'/api/messages/{ids["bob"]}', A)
+check('Đoạn chat với tài khoản đã xóa: canMessage=false, partner.deleted', s == 200 and not data((s, b))['canMessage']
+      and data((s, b))['partner']['deleted'], (s, b))
+s, b = call('POST', f'/api/follows/{ids["bob"]}', C)
+check('Theo dõi tài khoản đã xóa -> 404', s == 404, (s, b))
+s, b = call('POST', f'/api/blocks/{ids["bob"]}', C)
+check('Chặn tài khoản đã xóa -> 404', s == 404, (s, b))
 
 passed = sum(1 for _, ok, _ in results if ok)
 print(f'\n==> {passed}/{len(results)} PASS')

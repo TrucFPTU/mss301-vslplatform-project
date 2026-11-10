@@ -7,6 +7,7 @@ import com.vsl.social.dto.NotificationResponse;
 import com.vsl.social.entity.BlogNotification;
 import com.vsl.social.entity.NotificationType;
 import com.vsl.social.repository.BlogNotificationRepository;
+import com.vsl.social.service.BlockService;
 import com.vsl.social.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -21,6 +22,7 @@ public class NotificationServiceImpl implements NotificationService {
 
     private final BlogNotificationRepository notificationRepository;
     private final SocialViews views;
+    private final BlockService blockService;
 
     @Override
     @Transactional
@@ -32,6 +34,10 @@ public class NotificationServiceImpl implements NotificationService {
     @Transactional
     public void notify(Long recipientId, Long actorId, NotificationType type, Long blogId, Long commentId, Long replyId) {
         if (recipientId == null || Objects.equals(recipientId, actorId)) {
+            return;
+        }
+        // Người đã chặn nhau không nhận thông báo về nhau (vd. trả lời bình luận ở bài của người thứ ba).
+        if (blockService.isBlockedBetween(recipientId, actorId)) {
             return;
         }
         notificationRepository.save(BlogNotification.builder()
