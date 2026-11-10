@@ -44,7 +44,7 @@ public class GeminiClient {
                         @Value("${gemini.backup-api-key:}") String backupApiKey,
                         @Value("${gemini.base-url:https://generativelanguage.googleapis.com}") String baseUrl,
                         @Value("${gemini.model:gemini-3.5-flash-lite}") String model,
-                        @Value("${gemini.fallback-models:gemini-3.1-flash-lite,gemini-2.5-flash-lite}") List<String> fallbackModels,
+                        @Value("${gemini.fallback-models:gemini-3.1-flash-lite}") List<String> fallbackModels,
                         @Value("${gemini.enabled:true}") boolean enabled) {
         List<String> keys = new ArrayList<>();
         for (String k : new String[]{apiKey, backupApiKey}) {
