@@ -113,7 +113,9 @@ def cleanup():
         return
     ids_sql = ','.join(str(i) for i in created['users'])
     sql = {
-        'vsl_social': f'delete from direct_messages where sender_id in ({ids_sql}) or recipient_id in ({ids_sql});'
+        # Bài bị ẩn vì tác giả xóa tài khoản không khôi phục / xóa qua API được -> xóa thẳng (bảng con cascade).
+        'vsl_social': f'delete from blogs where author_id in ({ids_sql});'
+                      f'delete from direct_messages where sender_id in ({ids_sql}) or recipient_id in ({ids_sql});'
                       f'delete from blog_notifications where actor_id in ({ids_sql}) or recipient_id in ({ids_sql});'
                       f'delete from user_follows where follower_id in ({ids_sql}) or followee_id in ({ids_sql});'
                       f'delete from user_blocks where blocker_id in ({ids_sql}) or blocked_id in ({ids_sql});',
@@ -123,7 +125,8 @@ def cleanup():
                         f'delete from user_achievements where user_id in ({ids_sql});'
                         f'delete from user_progress where user_id in ({ids_sql});'
                         f'delete from attempt_history where user_id in ({ids_sql});',
-        'vsl_identity': f'delete from refresh_tokens where user_id in ({ids_sql});'
+        'vsl_identity': f'delete from outbox_events where aggregate_id in ({ids_sql});'
+                        f'delete from refresh_tokens where user_id in ({ids_sql});'
                         f'delete from users where user_id in ({ids_sql});',
     }
     for db, q in sql.items():
@@ -422,6 +425,39 @@ d = data((s, b)) or {}
 check('Dashboard admin (gọi identity + social)', s == 200 and d.get('totalStudents') is not None and d.get('totalBlogs') is not None and d.get('totalVisits', 0) >= 1, (s, b))
 
 # ---------------- Xóa tài khoản ----------------
+# Chuẩn bị cho saga xóa tài khoản: Bob theo dõi Carol, Bob có 1 bài công khai; ghi lại số liệu trước khi xóa.
+bo = ids['bob']
+call('POST', f'/api/follows/{ca}', B)
+s, b = call('POST', '/api/blogs', B, {'title': f'Mẹo luyện bảng chữ cái của Bob {tag}',
+                                     'content': f'Mỗi ngày mình luyện mười phút trước gương {tag}', 'status': 'PUBLISHED'})
+check('Bob đăng bài (trước khi xóa tài khoản)', s == 201, (s, b))
+bob_blog = (data((s, b)) or {}).get('id')
+if bob_blog:
+    created['blogs'].append(bob_blog)
+
+
+def follow_stats(uid, token):
+    return data(call('GET', f'/api/follows/{uid}/stats', token)) or {}
+
+
+def students():
+    return (data(call('GET', '/api/public/stats')) or {}).get('totalStudents')
+
+
+def wait_for(fn, timeout=20):
+    """Saga gửi ngay sau commit (thường < 1s); relay là đường dự phòng -> chờ tối đa ~20s."""
+    end = time.time() + timeout
+    while True:
+        v = fn()
+        if v or time.time() > end:
+            return v
+        time.sleep(0.5)
+
+
+carol_followers = follow_stats(ca, C).get('followerCount')
+alice_following = follow_stats(al, A).get('followingCount')
+students_before = students()
+
 s, b = call('DELETE', '/api/users/me', B, {'password': 'sai'})
 check('Xóa tài khoản sai mật khẩu -> từ chối', s == 401, (s, b))
 s, b = call('DELETE', '/api/users/me', B, {'password': 'secret123'})
@@ -432,7 +468,7 @@ s, b = call('GET', f'/api/users/{ids["bob"]}')
 check('Tên hiển thị thành "Người dùng đã xóa"', data((s, b))['fullName'] == 'Người dùng đã xóa', (s, b))
 check('Hồ sơ công khai báo deleted=true', data((s, b)).get('deleted') is True, (s, b))
 s, b = call('POST', f'/api/messages/{ids["bob"]}', A, {'content': 'còn đó không?'})
-check('Nhắn cho tài khoản đã xóa (dù vẫn theo dõi) -> 404', s == 404, (s, b))
+check('Nhắn cho tài khoản đã xóa -> 404 (không phải lỗi "phải theo dõi nhau")', s == 404, (s, b))
 s, b = call('GET', f'/api/messages/{ids["bob"]}', A)
 check('Đoạn chat với tài khoản đã xóa: canMessage=false, partner.deleted', s == 200 and not data((s, b))['canMessage']
       and data((s, b))['partner']['deleted'], (s, b))
@@ -440,6 +476,27 @@ s, b = call('POST', f'/api/follows/{ids["bob"]}', C)
 check('Theo dõi tài khoản đã xóa -> 404', s == 404, (s, b))
 s, b = call('POST', f'/api/blocks/{ids["bob"]}', C)
 check('Chặn tài khoản đã xóa -> 404', s == 404, (s, b))
+
+# ---------------- Saga xóa tài khoản (identity -> outbox -> social) ----------------
+check('Saga: Carol mất 1 người theo dõi (Bob)',
+      wait_for(lambda: follow_stats(ca, C).get('followerCount') == carol_followers - 1),
+      (carol_followers, follow_stats(ca, C)))
+check('Saga: Alice không còn theo dõi Bob', follow_stats(al, A).get('followingCount') == alice_following - 1,
+      (alice_following, follow_stats(al, A)))
+s, b = call('GET', f'/api/blogs/{bob_blog}', C)
+check('Saga: bài của Bob bị ẩn với người khác -> 404', s == 404, (s, b))
+s, b = call('GET', f'/api/blogs/{bob_blog}', admin)
+d = data((s, b)) or {}
+check('Saga: admin thấy bài của Bob HIDDEN, lý do "Tác giả đã xóa tài khoản"',
+      s == 200 and d.get('status') == 'HIDDEN' and d.get('deletionReason') == 'Tác giả đã xóa tài khoản', (s, b))
+s, b = call('PUT', f'/api/blogs/admin/{bob_blog}/restore', admin)
+check('Khôi phục bài của tác giả đã xóa -> 409 SOCIAL_4025', s == 409 and b.get('code') == 'SOCIAL_4025', (s, b))
+s, b = call('GET', f'/api/blogs/{blog_id}/comments', A)
+bob_comment = next((c for c in (data((s, b)) or {}).get('content', []) if c['id'] == comment.get('id')), None)
+check('Bình luận của Bob vẫn còn, tên "Người dùng đã xóa"',
+      bob_comment is not None and bob_comment['user']['fullName'] == 'Người dùng đã xóa', (s, bob_comment))
+check('Số học viên (trang chủ) giảm 1 sau khi xóa tài khoản', students() == students_before - 1,
+      (students_before, students()))
 
 passed = sum(1 for _, ok, _ in results if ok)
 print(f'\n==> {passed}/{len(results)} PASS')
