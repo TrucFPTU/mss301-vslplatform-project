@@ -78,6 +78,7 @@ public class IdentityClient {
     /**
      * Người dùng có tồn tại không. identity không phản hồi -> coi như có (không chặn thao tác của người dùng
      * chỉ vì service khác tạm lỗi); sai sót hiếm khi đó chỉ là theo dõi/nhắc một id không tồn tại.
+     * Tài khoản đã xóa -> false (không theo dõi / nhắn tin / chặn được nữa).
      */
     public boolean exists(Long id) {
         try {
@@ -86,7 +87,7 @@ public class IdentityClient {
                     .retrieve()
                     .body(SUMMARIES);
             return response == null || response.data() == null
-                    || response.data().stream().anyMatch(s -> id.equals(s.userId()));
+                    || response.data().stream().anyMatch(s -> id.equals(s.userId()) && !s.deleted());
         } catch (Exception e) {
             log.warn("Không kiểm tra được user {} ở identity-service: {}", id, e.getMessage());
             return true;
