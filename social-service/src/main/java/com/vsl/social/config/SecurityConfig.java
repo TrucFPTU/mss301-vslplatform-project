@@ -35,6 +35,8 @@ public class SecurityConfig {
                         .requestMatchers("/actuator/**",
                                 "/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**",
                                 "/dev/**").permitAll()
+                        // API nội bộ giữa các service (token role SERVICE do service tự ký; không qua gateway).
+                        .requestMatchers("/api/internal/**").hasRole("SERVICE")
                         // Tuyến quản trị báo cáo (chỉ ADMIN)
                         .requestMatchers("/api/blogs/admin/**", "/api/admin/**").hasRole("ADMIN")
                         // Khách xem được bài viết, bình luận, trả lời, danh sách theo dõi.

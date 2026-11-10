@@ -37,6 +37,9 @@ class UserServiceTest {
     private RefreshTokenService refreshTokenService;
 
     @Mock
+    private UserDeletionSagaService userDeletionSagaService;
+
+    @Mock
     private org.springframework.beans.factory.ObjectProvider<com.vsl.common.storage.StorageService> storage;
 
     @InjectMocks
@@ -135,6 +138,7 @@ class UserServiceTest {
         assertThrows(AppException.class, () -> userService.deleteMyAccount(1L, "wrong"));
         assertEquals(UserStatus.ACTIVE, sampleUser.getStatus());
         verify(refreshTokenService, never()).revokeAll(any());
+        verify(userDeletionSagaService, never()).start(any());
     }
 
     @Test
@@ -150,6 +154,22 @@ class UserServiceTest {
         assertEquals("Người dùng đã xóa", sampleUser.getFullName());
         assertFalse(sampleUser.isActive());
         verify(refreshTokenService).revokeAll(1L);
+        // Saga: báo các service khác dọn dữ liệu (qua outbox, cùng transaction).
+        verify(userDeletionSagaService).start(1L);
+    }
+
+    @Test
+    @DisplayName("Số liệu công khai chỉ đếm tài khoản đang hoạt động (bỏ tài khoản đã xóa / bị khóa)")
+    void getPublicStats_CountsOnlyActive() {
+        when(userRepository.countByStatus(UserStatus.ACTIVE)).thenReturn(12L);
+        when(userRepository.countByRoleAndStatus(Role.USER, UserStatus.ACTIVE)).thenReturn(10L);
+
+        var stats = userService.getPublicStats();
+
+        assertEquals(12L, stats.totalUsers());
+        assertEquals(10L, stats.totalStudents());
+        verify(userRepository, never()).count();
+        verify(userRepository, never()).countByRole(any());
     }
 
     @Test

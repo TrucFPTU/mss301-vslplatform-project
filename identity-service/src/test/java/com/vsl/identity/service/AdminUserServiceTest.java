@@ -47,6 +47,9 @@ class AdminUserServiceTest {
     @Mock
     private RefreshTokenService refreshTokenService;
 
+    @Mock
+    private UserDeletionSagaService userDeletionSagaService;
+
     @InjectMocks
     private AdminUserServiceImpl adminUserService;
 
@@ -200,12 +203,12 @@ class AdminUserServiceTest {
     @Test
     @DisplayName("getUserStatistics -> trả về đầy đủ các số liệu thống kê người dùng")
     void getUserStatistics_Success() {
-        when(userRepository.count()).thenReturn(50L);
+        when(userRepository.countByStatusNot(UserStatus.DELETED)).thenReturn(50L);
         when(userRepository.countByStatus(UserStatus.ACTIVE)).thenReturn(45L);
         when(userRepository.countByStatus(UserStatus.BANNED)).thenReturn(3L);
         when(userRepository.countByStatus(UserStatus.PENDING_VERIFICATION)).thenReturn(2L);
-        when(userRepository.countByRole(Role.ADMIN)).thenReturn(5L);
-        when(userRepository.countByRole(Role.USER)).thenReturn(45L);
+        when(userRepository.countByRoleAndStatusNot(Role.ADMIN, UserStatus.DELETED)).thenReturn(5L);
+        when(userRepository.countByRoleAndStatusNot(Role.USER, UserStatus.DELETED)).thenReturn(45L);
 
         UserStatisticsResponse stats = adminUserService.getUserStatistics();
 
@@ -272,5 +275,6 @@ class AdminUserServiceTest {
 
         assertThat(sampleUser.getStatus()).isEqualTo(UserStatus.DELETED);
         verify(refreshTokenService).revokeAll(1L);
+        verify(userDeletionSagaService).start(1L);
     }
 }

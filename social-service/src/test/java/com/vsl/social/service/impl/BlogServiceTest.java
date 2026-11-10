@@ -408,6 +408,32 @@ class BlogServiceTest {
         }
 
         @Test
+        void restore_rejectsPostHiddenBecauseAuthorDeleted() {
+            loginAs(ADMIN, "ADMIN");
+            Blog b = blog(1L, AUTHOR, BlogStatus.HIDDEN);
+            b.setDeletionReason(com.vsl.social.service.UserCleanupService.AUTHOR_DELETED_REASON);
+            when(blogRepository.findById(1L)).thenReturn(Optional.of(b));
+
+            assertAppError(() -> blogService.restore(1L, ADMIN), ErrorCode.BLOG_AUTHOR_DELETED);
+            assertThat(b.getStatus()).isEqualTo(BlogStatus.HIDDEN);
+            verify(blogRepository, never()).saveAndFlush(any());
+        }
+
+        @Test
+        void restore_rejectsWhenIdentitySaysAuthorDeleted() {
+            // Admin gỡ bài trước (lý do riêng), sau đó tác giả mới xóa tài khoản.
+            loginAs(ADMIN, "ADMIN");
+            Blog b = blog(1L, AUTHOR, BlogStatus.HIDDEN);
+            b.setDeletionReason("Spam");
+            when(blogRepository.findById(1L)).thenReturn(Optional.of(b));
+            when(identityClient.getSummary(AUTHOR)).thenReturn(Optional.of(
+                    new UserSummary(AUTHOR, "deleted_1", "Người dùng đã xóa", null, true)));
+
+            assertAppError(() -> blogService.restore(1L, ADMIN), ErrorCode.BLOG_AUTHOR_DELETED);
+            assertThat(b.getDeletionReason()).isEqualTo("Spam");
+        }
+
+        @Test
         void uploadThumbnail_rejectsNonImage() {
             loginAs(AUTHOR, "USER");
             when(blogRepository.findById(1L)).thenReturn(Optional.of(blog(1L, AUTHOR, BlogStatus.PUBLISHED)));

@@ -4,6 +4,7 @@ import com.vsl.social.entity.UserFollow;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -24,6 +25,11 @@ public interface UserFollowRepository extends JpaRepository<UserFollow, Long> {
     Page<UserFollow> findByFollowerId(Long followerId, Pageable pageable);
 
     long countByFolloweeId(Long followeeId);
+
+    /** Xóa mọi quan hệ theo dõi có userId ở một trong hai đầu (người dùng đã xóa tài khoản). */
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("delete from UserFollow f where f.followerId = :id or f.followeeId = :id")
+    int deleteAllInvolving(@Param("id") Long id);
 
     long countByFollowerId(Long followerId);
 
