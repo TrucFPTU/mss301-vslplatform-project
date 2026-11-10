@@ -53,4 +53,14 @@ public interface UserRepository extends JpaRepository<User, Long> {
     long countByRole(Role role);
 
     long countByRoleAndStatusAndUserIdNot(Role role, UserStatus status, Long userId);
+
+    long countByRoleAndStatus(Role role, UserStatus status);
+
+    long countByStatusNot(UserStatus status);
+
+    long countByRoleAndStatusNot(Role role, UserStatus status);
+
+    /** Id mọi người dùng có trạng thái cho trước (backfill saga xóa tài khoản: status = DELETED). */
+    @Query("SELECT u.userId FROM User u WHERE u.status = :status")
+    java.util.List<Long> findIdsByStatus(@Param("status") UserStatus status);
 }
