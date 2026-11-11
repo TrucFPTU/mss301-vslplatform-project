@@ -104,6 +104,10 @@ jobs:
             && docker compose -f docker-compose.prod.yml --env-file .env pull --policy missing \
             && docker compose -f docker-compose.prod.yml --env-file .env up -d --remove-orphans \
             && docker image prune -f"
+          # Caddyfile là bind mount :ro nên 'up -d' không restart Caddy khi chỉ đổi nội dung file
+          # -> nạp lại cấu hình (zero-downtime). Nếu reload lỗi thì restart hẳn Caddy.
+          $SSH "docker exec vsl-caddy caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile \
+            || docker compose -f $DEPLOY_DIR/docker-compose.prod.yml --env-file $DEPLOY_DIR/.env restart caddy"
       - name: Kiểm tra trang đã lên
         if: env.VM_HOST != ''
         run: |
