@@ -39,6 +39,48 @@ spring:
               predicates:
                 - Path=/api/blogs/**,/api/comments/**,/api/follows/**,/api/notifications/**,/api/messages/**,/api/blocks/**
 
+            # ---- Tài liệu OpenAPI của từng service cho Swagger UI chung (springdoc bên dưới) ----
+            - id: identity-docs
+              uri: lb://identity-service
+              predicates:
+                - Path=/api-docs/identity
+              filters:
+                - SetPath=/v3/api-docs
+            - id: learning-docs
+              uri: lb://learning-service
+              predicates:
+                - Path=/api-docs/learning
+              filters:
+                - SetPath=/v3/api-docs
+            - id: ai-docs
+              uri: lb://ai-service
+              predicates:
+                - Path=/api-docs/ai
+              filters:
+                - SetPath=/v3/api-docs
+            - id: social-docs
+              uri: lb://social-service
+              predicates:
+                - Path=/api-docs/social
+              filters:
+                - SetPath=/v3/api-docs
+
+# Swagger UI chung: http://localhost:8080/swagger-ui.html — ô chọn ở góc trên đổi giữa 4 service.
+# "Try it out" gọi qua chính gateway (service khai báo server "/", xem OpenApiAutoConfiguration ở common-lib).
+springdoc:
+  swagger-ui:
+    urls:
+      - name: identity-service
+        url: /api-docs/identity
+      - name: learning-service
+        url: /api-docs/learning
+      - name: ai-service
+        url: /api-docs/ai
+      - name: social-service
+        url: /api-docs/social
+    urls-primary-name: identity-service
+    persist-authorization: true
+
 eureka:
   client:
     service-url:

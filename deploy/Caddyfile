@@ -20,6 +20,21 @@
 		}
 	}
 
+	# Swagger UI gom 4 service (dropdown) + tài liệu OpenAPI — cùng cổng gateway.
+	# Link deploy: https://DOMAIN/swagger-ui.html
+	handle /swagger-ui/* {
+		reverse_proxy api-gateway:8080
+	}
+	handle /swagger-ui.html {
+		reverse_proxy api-gateway:8080
+	}
+	handle /v3/api-docs* {
+		reverse_proxy api-gateway:8080
+	}
+	handle /api-docs/* {
+		reverse_proxy api-gateway:8080
+	}
+
 	# Ảnh/video MinIO: MINIO_PUBLIC_ENDPOINT = https://DOMAIN/files → bỏ tiền tố rồi chuyển cho MinIO.
 	handle_path /files/* {
 		reverse_proxy minio:9000
