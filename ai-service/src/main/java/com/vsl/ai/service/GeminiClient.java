@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.vsl.common.exception.AppException;
 import com.vsl.common.exception.ErrorCode;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -20,6 +21,8 @@ import java.util.Map;
 /**
  * Gọi Gemini generateContent ở chế độ JSON, dùng chung cho kiểm duyệt và trợ lý học tập.
  * Model chính quá tải / treo -> thử lần lượt các model dự phòng.
+ * Có key dự phòng ({@code GEMINI_BACKUP_API_KEY}): key chính lỗi với MỌI model (quá tải 503, hết quota 429,
+ * không phản hồi...) thì thử lại toàn bộ với key dự phòng. Key sai / bị thu hồi (400/401/403) thì chuyển ngay.
  */
 @Slf4j
 @Component
@@ -28,24 +31,41 @@ public class GeminiClient {
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final HttpClient httpClient = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
 
-    private final String apiKey;
+    /** Key chính trước, key dự phòng sau (bỏ key trống / trùng). */
+    private final List<String> apiKeys;
+    private final String baseUrl;
     private final String model;
     /** Model dự phòng (phân tách dấu phẩy) - thử lần lượt khi model chính quá tải (429/503) hoặc không phản hồi. */
     private final List<String> fallbackModels;
     private final boolean enabled;
 
+    @Autowired
     public GeminiClient(@Value("${gemini.api-key:}") String apiKey,
+                        @Value("${gemini.backup-api-key:}") String backupApiKey,
+                        @Value("${gemini.base-url:https://generativelanguage.googleapis.com}") String baseUrl,
                         @Value("${gemini.model:gemini-3.5-flash-lite}") String model,
-                        @Value("${gemini.fallback-models:gemini-3.1-flash-lite,gemini-2.5-flash-lite}") List<String> fallbackModels,
+                        @Value("${gemini.fallback-models:gemini-3.1-flash-lite}") List<String> fallbackModels,
                         @Value("${gemini.enabled:true}") boolean enabled) {
-        this.apiKey = apiKey;
+        List<String> keys = new ArrayList<>();
+        for (String k : new String[]{apiKey, backupApiKey}) {
+            if (k != null && !k.isBlank() && !keys.contains(k.trim())) {
+                keys.add(k.trim());
+            }
+        }
+        this.apiKeys = List.copyOf(keys);
+        this.baseUrl = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
         this.model = model;
         this.fallbackModels = fallbackModels == null ? List.of() : fallbackModels;
         this.enabled = enabled;
     }
 
+    /** Một key, gọi Google thật (dùng trong test). */
+    public GeminiClient(String apiKey, String model, List<String> fallbackModels, boolean enabled) {
+        this(apiKey, "", "https://generativelanguage.googleapis.com", model, fallbackModels, enabled);
+    }
+
     public boolean isEnabled() {
-        return enabled && apiKey != null && !apiKey.isBlank();
+        return enabled && !apiKeys.isEmpty();
     }
 
     /** Gọi Gemini (JSON mode), trả raw body. Lỗi mạng / HTTP != 200 ở mọi model -> AppException(errorCode). */
@@ -64,11 +84,27 @@ public class GeminiClient {
         List<String> models = new ArrayList<>();
         models.add(model);
         fallbackModels.stream().map(String::trim).filter(m -> !m.isEmpty() && !models.contains(m)).forEach(models::add);
+        for (int k = 0; k < apiKeys.size(); k++) {
+            String keyName = k == 0 ? "key chính" : "key dự phòng";
+            String body = tryModels(apiKeys.get(k), keyName, models, requestBody, errorCode);
+            if (body != null) {
+                return body;
+            }
+            if (k + 1 < apiKeys.size()) {
+                log.warn("Gemini: {} lỗi với mọi model - chuyển sang key dự phòng", keyName);
+            }
+        }
+        log.error("Mọi key / model Gemini đều không khả dụng (key: {}, model: {})", apiKeys.size(), models);
+        throw new AppException(errorCode);
+    }
+
+    /** Thử lần lượt các model với một key; null nếu không model nào trả 200. */
+    private String tryModels(String apiKey, String keyName, List<String> models, String requestBody, ErrorCode errorCode) {
         for (String m : models) {
             HttpResponse<String> response;
             try {
                 HttpRequest request = HttpRequest.newBuilder()
-                        .uri(URI.create("https://generativelanguage.googleapis.com/v1beta/models/" + m + ":generateContent"))
+                        .uri(URI.create(baseUrl + "/v1beta/models/" + m + ":generateContent"))
                         .timeout(Duration.ofSeconds(25))
                         .header("Content-Type", "application/json")
                         .header("x-goog-api-key", apiKey)
@@ -79,7 +115,7 @@ public class GeminiClient {
                 Thread.currentThread().interrupt();
                 throw new AppException(errorCode);
             } catch (Exception e) {
-                log.warn("Gọi Gemini ({}) thất bại: {} - thử model kế tiếp", m, e.getMessage());
+                log.warn("Gọi Gemini ({}, {}) thất bại: {} - thử model kế tiếp", m, keyName, e.getMessage());
                 continue;
             }
             int code = response.statusCode();
@@ -87,15 +123,14 @@ public class GeminiClient {
                 return response.body();
             }
             if (code == 429 || code == 503 || code == 500 || code == 404) {
-                log.warn("Gemini ({}) trả HTTP {} - thử model kế tiếp: {}", m, code, truncate(response.body()));
+                log.warn("Gemini ({}, {}) trả HTTP {} - thử model kế tiếp: {}", m, keyName, code, truncate(response.body()));
                 continue;
             }
-            // 400/401/403: lỗi cấu hình (khóa sai, request sai) - đổi model cũng không khỏi.
-            log.error("Gemini ({}) trả HTTP {}: {}", m, code, truncate(response.body()));
-            throw new AppException(errorCode);
+            // 400/401/403: key sai / bị thu hồi / không có quyền - đổi model cũng không khỏi, chỉ đổi key mới khỏi.
+            log.error("Gemini ({}, {}) trả HTTP {}: {}", m, keyName, code, truncate(response.body()));
+            return null;
         }
-        log.error("Mọi model Gemini đều không khả dụng: {}", models);
-        throw new AppException(errorCode);
+        return null;
     }
 
     /** Đọc JSON trong candidates[0].content.parts[0].text (bỏ ```json fence nếu có). */

@@ -165,6 +165,7 @@ services:
       <<: *common-env
       AI_MODEL_PATH: /app/models/mvitv2_small.onnx
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_BACKUP_API_KEY: ${GEMINI_BACKUP_API_KEY:-}
       JAVA_TOOL_OPTIONS: -Xmx1536m
     volumes:
       - ./models:/app/models:ro

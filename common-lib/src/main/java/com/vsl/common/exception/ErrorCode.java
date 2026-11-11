@@ -75,7 +75,8 @@ public enum ErrorCode {
     MESSAGE_NOT_ALLOWED("SOCIAL_4021", "Chỉ nhắn tin được khi một trong hai người đang theo dõi người kia", HttpStatus.FORBIDDEN),
     MESSAGE_RATE_LIMITED("SOCIAL_4022", "Bạn gửi tin hơi nhanh, chờ một chút rồi gửi tiếp nhé", HttpStatus.TOO_MANY_REQUESTS),
     CANNOT_BLOCK_SELF("SOCIAL_4023", "Không thể tự chặn chính mình", HttpStatus.BAD_REQUEST),
-    USER_BLOCKED("SOCIAL_4024", "Không thể tương tác vì một trong hai người đã chặn người kia", HttpStatus.FORBIDDEN);
+    USER_BLOCKED("SOCIAL_4024", "Không thể tương tác vì một trong hai người đã chặn người kia", HttpStatus.FORBIDDEN),
+    BLOG_AUTHOR_DELETED("SOCIAL_4025", "Tác giả đã xóa tài khoản, không thể khôi phục bài", HttpStatus.CONFLICT);
 
     private final String code;
     private final String defaultMessage;

@@ -15,6 +15,7 @@ import com.vsl.identity.entity.User;
 import com.vsl.identity.entity.UserStatus;
 import com.vsl.identity.repository.UserRepository;
 import com.vsl.identity.service.RefreshTokenService;
+import com.vsl.identity.service.UserDeletionSagaService;
 import com.vsl.identity.service.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -48,6 +49,7 @@ public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final RefreshTokenService refreshTokenService;
+    private final UserDeletionSagaService userDeletionSagaService;
     /** Không cấu hình MinIO thì không có bean -> upload avatar báo lỗi, phần còn lại vẫn chạy. */
     private final ObjectProvider<StorageService> storage;
 
@@ -110,6 +112,8 @@ public class UserServiceImpl implements UserService {
         String avatar = user.getAvatarUrl();
         user.anonymize();
         userRepository.save(user);
+        // Saga: ghi sự kiện USER_DELETED vào outbox CÙNG transaction -> social dọn theo dõi / chặn / ẩn bài.
+        userDeletionSagaService.start(userId);
         refreshTokenService.revokeAll(userId);
         deleteAvatarAfterCommit(avatar);
         log.info("Người dùng tự xóa tài khoản: userId={}", userId);
@@ -144,7 +148,9 @@ public class UserServiceImpl implements UserService {
     @Override
     @Transactional(readOnly = true)
     public PublicUserStatsResponse getPublicStats() {
-        return new PublicUserStatsResponse(userRepository.count(), userRepository.countByRole(Role.USER));
+        // Chỉ đếm tài khoản đang hoạt động (không tính tài khoản đã xóa / bị khóa / chưa xác minh).
+        return new PublicUserStatsResponse(userRepository.countByStatus(UserStatus.ACTIVE),
+                userRepository.countByRoleAndStatus(Role.USER, UserStatus.ACTIVE));
     }
 
     @Override

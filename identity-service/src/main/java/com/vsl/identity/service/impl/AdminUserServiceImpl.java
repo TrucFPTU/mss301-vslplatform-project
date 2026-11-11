@@ -14,6 +14,7 @@ import com.vsl.identity.entity.UserStatus;
 import com.vsl.identity.repository.UserRepository;
 import com.vsl.identity.service.AdminUserService;
 import com.vsl.identity.service.RefreshTokenService;
+import com.vsl.identity.service.UserDeletionSagaService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -39,6 +40,7 @@ public class AdminUserServiceImpl implements AdminUserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final RefreshTokenService refreshTokenService;
+    private final UserDeletionSagaService userDeletionSagaService;
 
     /** Seed tài khoản Admin mặc định khi ứng dụng khởi chạy nếu chưa có tài khoản Admin nào */
     @EventListener(ApplicationReadyEvent.class)
@@ -168,12 +170,13 @@ public class AdminUserServiceImpl implements AdminUserService {
     @Override
     @Transactional(readOnly = true)
     public UserStatisticsResponse getUserStatistics() {
-        long totalUsers = userRepository.count();
+        // Tài khoản đã xóa (ẩn danh hóa) không tính vào tổng / số admin / số học viên.
+        long totalUsers = userRepository.countByStatusNot(UserStatus.DELETED);
         long activeUsers = userRepository.countByStatus(UserStatus.ACTIVE);
         long bannedUsers = userRepository.countByStatus(UserStatus.BANNED);
         long pendingUsers = userRepository.countByStatus(UserStatus.PENDING_VERIFICATION);
-        long adminUsers = userRepository.countByRole(Role.ADMIN);
-        long regularUsers = userRepository.countByRole(Role.USER);
+        long adminUsers = userRepository.countByRoleAndStatusNot(Role.ADMIN, UserStatus.DELETED);
+        long regularUsers = userRepository.countByRoleAndStatusNot(Role.USER, UserStatus.DELETED);
 
         return UserStatisticsResponse.builder()
                 .totalUsers(totalUsers)
@@ -196,6 +199,8 @@ public class AdminUserServiceImpl implements AdminUserService {
         }
         user.anonymize();
         userRepository.save(user);
+        // Saga: ghi sự kiện USER_DELETED vào outbox CÙNG transaction -> social dọn theo dõi / chặn / ẩn bài.
+        userDeletionSagaService.start(id);
         refreshTokenService.revokeAll(id);
         log.info("Admin xóa tài khoản userId={}", id);
     }

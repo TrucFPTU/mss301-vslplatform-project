@@ -33,10 +33,12 @@ ai:
 # Không có key -> bỏ qua kiểm duyệt (cho đăng) để môi trường dev vẫn chạy.
 gemini:
   api-key: ${GEMINI_API_KEY:}
+  # Key dự phòng: dùng khi key chính hết quota (429) hoặc sai / bị thu hồi (400/401/403). Trống = không có.
+  backup-api-key: ${GEMINI_BACKUP_API_KEY:}
   # Model lite: đủ cho kiểm duyệt, nhanh (5-15s). Ghim phiên bản (alias -latest tự đổi theo thời gian).
   model: ${GEMINI_MODEL:gemini-3.5-flash-lite}
-  # Thử lần lượt khi model chính quá tải (429/503) hoặc không phản hồi.
-  fallback-models: ${GEMINI_FALLBACK_MODELS:gemini-3.1-flash-lite,gemini-2.5-flash-lite}
+  # Thử lần lượt khi model chính quá tải (429/503) hoặc không phản hồi. (gemini-2.5-flash-lite đã bị Google ngừng cho tài khoản mới -> 404, đừng thêm lại.)
+  fallback-models: ${GEMINI_FALLBACK_MODELS:gemini-3.1-flash-lite}
   enabled: ${GEMINI_ENABLED:true}
 
 eureka:
